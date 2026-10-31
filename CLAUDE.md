@@ -6,7 +6,7 @@ App Android (Jetpack Compose) untuk TPQ & Madrasah Diniyah Yayasan Pendidikan Al
 
 _Diperbarui 31 Oktober 2026 (Tahap 4: beranda per peran, profil, tema). Rencana besar, keputusan role, dan status backend/deploy: `CLAUDE.md` repo web (`C:\Project\Personal\yayasanpendidikanalhikmah-web-app`, bagian Status Pengembangan)._
 
-> Remote git: `https://github.com/elahady/yayasanpendidikanalhikmah-android` (branch `main`). Commit tahap 4 (beranda/profil/tema) **belum di-push**: menunggu keputusan pemilik.
+> Remote git: `https://github.com/elahady/yayasanpendidikanalhikmah-android` (branch `main`).
 
 ### Sudah selesai
 - Scope versi 1 terhadap kontrak API: login + token aman, cek sesi `GET /me`, 401 kembali ke login, rekap harian, absensi ustadz/santri (tulis + lihat), daftar santri + detail + ubah progress, Anak Saya.
@@ -15,8 +15,8 @@ _Diperbarui 31 Oktober 2026 (Tahap 4: beranda per peran, profil, tema). Rencana 
 
 ### Belum / berikutnya
 - **Belum diuji di emulator/perangkat:** menyimpan password baru lewat dialog (API-nya sudah dites di backend), pull-to-refresh, tab Absensi dan Santri, layar Anak saya penuh, peran PIKET murni dan USTADZ murni, tampilan wali di mode terang/gelap. Preview Compose belum dilihat di Android Studio.
-- **Backend tahap 4 belum di-deploy ke VPS**: build debug yang menunjuk VPS (`debug.apiHost=103.54.170.198:8083`) menampilkan "Endpoint tidak ditemukan" di Beranda sampai deploy dilakukan. Subdomain `tpq-alhikmah.roziqrizal.com` juga belum aktif (menunggu DNS), jadi build release belum bisa login.
-- Beranda belum menampilkan `tren` (14 hari) dan `aktivitas` (sudah diparse dari API); daftar nama ustadz per baris di beranda piket butuh field tambahan di `/dashboard`; ikon notifikasi dari mockup tidak dibuat.
+- Backend tahap 4 **sudah di-deploy ke VPS** (31 Oktober 2026; login, `/me`, `/dashboard`, `/me/password` terverifikasi); build debug dengan `debug.apiHost=103.54.170.198:8083` memakainya. Subdomain `tpq-alhikmah.roziqrizal.com` belum aktif (menunggu DNS), jadi build release belum bisa login. Database produksi masih kosong (belum ada santri/ustadz).
+- Beranda admin menampilkan kartu Kehadiran 14 hari dan Aktivitas terbaru; beranda piket menampilkan daftar ustadz per baris (`ringkasan.ustadz.daftar`). Keduanya sudah dilihat di emulator terhadap backend lokal. Ikon notifikasi dari mockup tidak dibuat.
 - Ikon launcher/splash memakai `logo.png` web (194x194) yang di-upscale; minta logo resolusi lebih tinggi/vektor bila ada. Latar jendela/splash mengikuti tema sistem (bisa berkedip bila pilihan tema berbeda).
 - Belum ada: keystore & signing rilis, R8/minify, GitHub Actions/CI, notifikasi push dan mode offline (rencana versi 2).
 - Pertanyaan terbuka: jilid Nahdliyah berlaku untuk jenjang mana saja (UI sementara menampilkan editor jilid untuk semua santri).
