@@ -53,6 +53,31 @@ class ApiErrorTest {
     }
 
     @Test
+    fun `500 INTERNAL dari server dan akun nonaktif 403 menampilkan pesan server`() {
+        val internal = ApiError.fromResponse(500, """{"error":{"code":"INTERNAL","message":"Terjadi kesalahan di server."}}""")
+        assertEquals(ErrorCodes.INTERNAL, internal.code)
+        assertEquals("Terjadi kesalahan di server.", internal.message)
+        assertEquals(ErrorCodes.INTERNAL, ApiError.fromResponse(500, null).code)
+
+        val nonaktif = ApiError.fromResponse(403, """{"error":{"code":"FORBIDDEN","message":"Akun Anda dinonaktifkan."}}""")
+        assertEquals("Akun Anda dinonaktifkan.", nonaktif.message)
+        assertFalse(nonaktif.isUnauthenticated) // tidak diperlakukan sebagai sesi berakhir
+    }
+
+    @Test
+    fun `Retry-After pada 429 ditambahkan ke pesan`() {
+        val body = """{"error":{"code":"RATE_LIMITED","message":"Terlalu banyak percobaan masuk."}}"""
+        val detik = ApiError.fromResponse(429, body, retryAfter = "45")
+        assertEquals(45, detik.retryAfterSeconds)
+        assertEquals("Terlalu banyak percobaan masuk. Coba lagi dalam 45 detik.", detik.message)
+        assertEquals("Terlalu banyak percobaan masuk. Coba lagi dalam 2 menit.", ApiError.fromResponse(429, body, "90").message)
+        // Tanpa header, atau berupa tanggal HTTP, atau status lain: pesan tidak diubah.
+        assertEquals("Terlalu banyak percobaan masuk.", ApiError.fromResponse(429, body, null).message)
+        assertEquals("Terlalu banyak percobaan masuk.", ApiError.fromResponse(429, body, "Wed, 21 Oct 2026 07:28:00 GMT").message)
+        assertEquals(null, ApiError.fromResponse(403, body, "30").retryAfterSeconds)
+    }
+
+    @Test
     fun `401 dikenali sebagai tidak terautentikasi`() {
         assertTrue(ApiError.fromResponse(401, null).isUnauthenticated)
         assertFalse(ApiError.fromResponse(403, null).isUnauthenticated)

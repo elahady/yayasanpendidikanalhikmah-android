@@ -11,6 +11,7 @@ object ErrorCodes {
     const val NOT_FOUND = "NOT_FOUND"
     const val VALIDATION = "VALIDATION"
     const val RATE_LIMITED = "RATE_LIMITED"
+    const val INTERNAL = "INTERNAL"
 
     // Lokal (bukan dari server).
     const val NETWORK = "NETWORK"
@@ -26,6 +27,8 @@ data class ApiError(
     val message: String,
     /** 0 bila belum ada jawaban HTTP (jaringan putus, timeout). */
     val httpStatus: Int = 0,
+    /** Dari header Retry-After (detik) pada 429 RATE_LIMITED; null bila tidak ada/bukan angka. */
+    val retryAfterSeconds: Int? = null,
 ) {
     val isUnauthenticated: Boolean get() = httpStatus == 401 || code == ErrorCodes.UNAUTHENTICATED
     val isSelfAttendance: Boolean get() = code == ErrorCodes.SELF_ATTENDANCE_FORBIDDEN
@@ -42,12 +45,18 @@ data class ApiError(
          * Membentuk error dari jawaban HTTP non-2xx. Bila body berisi `error.message` dari server, pesan itu dipakai apa adanya;
          * bila body kosong/bukan JSON (mis. halaman error proxy), dipakai pesan bawaan menurut status.
          */
-        fun fromResponse(httpStatus: Int, body: String?): ApiError {
+        fun fromResponse(httpStatus: Int, body: String?, retryAfter: String? = null): ApiError {
             val parsed = parseBody(body)
             val code = parsed?.first?.takeIf { it.isNotBlank() } ?: defaultCode(httpStatus)
-            val message = parsed?.second?.takeIf { it.isNotBlank() } ?: defaultMessage(httpStatus)
-            return ApiError(code, message, httpStatus)
+            var message = parsed?.second?.takeIf { it.isNotBlank() } ?: defaultMessage(httpStatus)
+            // Retry-After bisa berupa tanggal HTTP; hanya angka detik yang dipakai.
+            val seconds = if (httpStatus == 429) retryAfter?.trim()?.toIntOrNull()?.takeIf { it > 0 } else null
+            if (seconds != null) message = "$message Coba lagi dalam ${formatWait(seconds)}."
+            return ApiError(code, message, httpStatus, seconds)
         }
+
+        private fun formatWait(seconds: Int): String =
+            if (seconds < 60) "$seconds detik" else "${(seconds + 59) / 60} menit"
 
         private fun parseBody(body: String?): Pair<String?, String?>? {
             if (body.isNullOrBlank()) return null
@@ -67,6 +76,7 @@ data class ApiError(
             status == 404 -> ErrorCodes.NOT_FOUND
             status == 422 -> ErrorCodes.VALIDATION
             status == 429 -> ErrorCodes.RATE_LIMITED
+            status == 500 -> ErrorCodes.INTERNAL
             status >= 500 -> ErrorCodes.SERVER
             else -> ErrorCodes.UNKNOWN
         }
@@ -76,7 +86,7 @@ data class ApiError(
             status == 403 -> "Anda tidak punya izin untuk tindakan ini."
             status == 404 -> "Data tidak ditemukan."
             status == 422 -> "Data yang dikirim tidak valid."
-            status == 429 -> "Terlalu banyak percobaan. Tunggu sebentar lalu coba lagi."
+            status == 429 -> "Terlalu banyak percobaan."
             status >= 500 -> "Server sedang bermasalah. Coba lagi nanti."
             else -> "Terjadi kesalahan (kode $status)."
         }

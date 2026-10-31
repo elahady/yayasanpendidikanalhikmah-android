@@ -37,9 +37,9 @@ class MenuResolverTest {
     }
 
     @Test
-    fun `piket menulis absensi ustadz dan hanya melihat santri`() {
+    fun `piket murni menulis absensi ustadz, tanpa menu absensi santri, daftar santri hanya lihat`() {
         assertEquals(
-            mapOf(REKAP_HARIAN to READ, ABSENSI_USTADZ to WRITE, ABSENSI_SANTRI to READ, DAFTAR_SANTRI to READ),
+            mapOf(REKAP_HARIAN to READ, ABSENSI_USTADZ to WRITE, DAFTAR_SANTRI to READ),
             menu(Role.PIKET),
         )
     }
@@ -75,6 +75,22 @@ class MenuResolverTest {
             MenuResolver.menuFor(Role.entries.toSet()).map { it.id },
         )
         assertTrue(MenuResolver.menuFor(emptySet()).isEmpty())
+    }
+
+    @Test
+    fun `piket dengan role lain mendapat absensi santri dari role lain itu`() {
+        assertEquals(WRITE, menu(Role.PIKET, Role.USTADZ)[ABSENSI_SANTRI])
+        assertEquals(READ, menu(Role.PIKET, Role.PENGAWAS)[ABSENSI_SANTRI])
+    }
+
+    @Test
+    fun `hak lihat absensi santri semua role kecuali piket murni`() {
+        assertFalse(MenuResolver.canViewAbsensiSantri(setOf(Role.PIKET)))
+        assertFalse(MenuResolver.canViewAbsensiSantri(emptySet()))
+        assertTrue(MenuResolver.canViewAbsensiSantri(setOf(Role.PIKET, Role.WALI)))
+        for (role in listOf(Role.ADMIN, Role.TU, Role.PENGAWAS, Role.USTADZ, Role.WALI)) {
+            assertTrue(MenuResolver.canViewAbsensiSantri(setOf(role)), "$role")
+        }
     }
 
     @Test

@@ -6,6 +6,7 @@ import com.alhikmah.tpq.domain.fake.FakeData
 import com.alhikmah.tpq.domain.fake.FakeTpqRepository
 import com.alhikmah.tpq.domain.model.Jilid
 import com.alhikmah.tpq.domain.model.ProgressUpdate
+import com.alhikmah.tpq.domain.model.Role
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -53,6 +54,22 @@ class FakeTpqRepositoryTest {
 
         val admin = FakeTpqRepository(user = FakeData.userAdmin, seedSantri = listOf(seeded))
         assertTrue(admin.absensiSantriByTanggal(tanggal).single().bisaDiubah)
+    }
+
+    @Test
+    fun `piket murni ditolak membaca absensi santri tetapi boleh membaca daftar santri`() = runTest {
+        val piket = FakeData.userPiketUstadz.copy(roles = setOf(Role.PIKET))
+        val repo = FakeTpqRepository(user = piket)
+        assertEquals(ErrorCodes.FORBIDDEN, assertFailsWith<ApiException> { repo.absensiSantriByTanggal(tanggal) }.error.code)
+        assertEquals(ErrorCodes.FORBIDDEN, assertFailsWith<ApiException> { repo.absensiSantriRiwayat("s1", tanggal, tanggal) }.error.code)
+        assertEquals(FakeData.santri.size, repo.santri().size)
+    }
+
+    @Test
+    fun `pencatat adalah akun terakhir yang menyimpan`() = runTest {
+        val seeded = FakeData.entry("s1", tanggal, true) // dicatat "Pak Tata Usaha"
+        val repo = FakeTpqRepository(user = FakeData.userAdmin.copy(nama = "TU Dua"), seedSantri = listOf(seeded))
+        assertEquals("TU Dua", repo.simpanAbsensiSantri("s1", tanggal, false, null).dicatatOleh)
     }
 
     @Test

@@ -34,7 +34,8 @@ object MenuResolver {
     private val rules = listOf(
         Rule(MenuId.REKAP_HARIAN, write = emptySet(), read = setOf(PENGAWAS, ADMIN, TU, PIKET, USTADZ)),
         Rule(MenuId.ABSENSI_USTADZ, write = setOf(ADMIN, TU, PIKET), read = setOf(PENGAWAS, USTADZ)),
-        Rule(MenuId.ABSENSI_SANTRI, write = setOf(ADMIN, TU, USTADZ), read = setOf(PENGAWAS, PIKET)),
+        // PIKET tidak boleh GET /absensi-santri (403), jadi PIKET murni tidak mendapat menu ini.
+        Rule(MenuId.ABSENSI_SANTRI, write = setOf(ADMIN, TU, USTADZ), read = setOf(PENGAWAS)),
         Rule(MenuId.DAFTAR_SANTRI, write = setOf(ADMIN, TU, USTADZ), read = setOf(PENGAWAS, PIKET)),
         Rule(MenuId.ANAK_SAYA, write = emptySet(), read = setOf(WALI)),
     )
@@ -46,6 +47,12 @@ object MenuResolver {
             else -> null
         }
     }
+
+    /**
+     * Boleh GET /absensi-santri (termasuk riwayat satu santri di layar detail): semua role kecuali PIKET murni.
+     * WALI hanya untuk anaknya (server memfilter).
+     */
+    fun canViewAbsensiSantri(roles: Set<Role>): Boolean = roles.any { it != PIKET }
 
     /** Hak mengubah progress santri (PATCH /santri/{id}/progress): ADMIN, TU, USTADZ. */
     fun canEditProgress(roles: Set<Role>): Boolean = roles.any { it == ADMIN || it == TU || it == USTADZ }

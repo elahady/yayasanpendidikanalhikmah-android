@@ -7,6 +7,7 @@ import com.alhikmah.tpq.domain.api.ErrorCodes
 import com.alhikmah.tpq.domain.api.LoginResult
 import com.alhikmah.tpq.domain.api.TokenStore
 import com.alhikmah.tpq.domain.api.TpqRepository
+import com.alhikmah.tpq.domain.menu.MenuResolver
 import com.alhikmah.tpq.domain.model.AbsensiEntry
 import com.alhikmah.tpq.domain.model.Jenjang
 import com.alhikmah.tpq.domain.model.Jilid
@@ -104,13 +105,20 @@ class FakeTpqRepository(
         return ustadzList
     }
 
+    /** PIKET murni tidak boleh GET /absensi-santri (kontrak). */
+    private fun requireAbsensiSantriRead() {
+        if (!MenuResolver.canViewAbsensiSantri(user.roles)) forbid()
+    }
+
     override suspend fun absensiSantriByTanggal(tanggal: String): List<AbsensiEntry> {
         check()
+        requireAbsensiSantriRead()
         return absensiSantri.values.filter { it.tanggal == tanggal }.map(::view)
     }
 
     override suspend fun absensiSantriRiwayat(santriId: String, dari: String, sampai: String): List<AbsensiEntry> {
         check()
+        requireAbsensiSantriRead()
         return absensiSantri.values
             .filter { it.subjectId == santriId && it.tanggal in dari..sampai }
             .sortedByDescending { it.tanggal }
@@ -152,7 +160,7 @@ class FakeTpqRepository(
             tanggal = tanggal,
             hadir = hadir,
             keterangan = keterangan?.trim()?.takeIf { it.isNotEmpty() },
-            dicatatOleh = existing?.dicatatOleh ?: user.nama,
+            dicatatOleh = user.nama, // pencatat = akun terakhir yang menyimpan (kontrak)
             bisaDiubah = true,
         )
         store[subjectId to tanggal] = saved
