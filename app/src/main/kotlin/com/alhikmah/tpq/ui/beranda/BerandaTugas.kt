@@ -1,25 +1,36 @@
 package com.alhikmah.tpq.ui.beranda
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.alhikmah.tpq.domain.beranda.UstadzHariIniBeranda
+import com.alhikmah.tpq.domain.beranda.UstadzHariIniTampil
 import com.alhikmah.tpq.domain.menu.MenuAccess
 import com.alhikmah.tpq.domain.menu.MenuEntry
 import com.alhikmah.tpq.domain.menu.MenuId
@@ -28,6 +39,8 @@ import com.alhikmah.tpq.domain.model.Ringkasan
 import com.alhikmah.tpq.domain.model.SantriRingkas
 import com.alhikmah.tpq.domain.model.StatusHadir
 import com.alhikmah.tpq.domain.model.User
+import com.alhikmah.tpq.domain.model.UstadzHariIni
+import com.alhikmah.tpq.domain.util.Inisial
 import com.alhikmah.tpq.domain.model.UstadzRingkas
 import com.alhikmah.tpq.domain.model.Role
 
@@ -85,22 +98,68 @@ private fun PiketCard(ustadz: UstadzRingkas, bisaBuka: Boolean, onOpen: (MenuId)
     }
 }
 
-/** Ringkasan ustadz hari ini (angka saja: daftar nama per ustadz tidak ada di /dashboard, ada di layar Absensi Ustadz). */
+/**
+ * Daftar ustadz hari ini per baris (inisial, nama, mapel, pill status). Ustadz yang tertaut ke akun sendiri
+ * disembunyikan kecuali akun ADMIN/TU (aturan di [UstadzHariIniBeranda], sama dengan layar Absensi Ustadz).
+ * Server lama tanpa `daftar`: jatuh ke ringkasan angka.
+ */
 @Composable
 private fun UstadzHariIniCard(user: User, ustadz: UstadzRingkas, bisaBuka: Boolean, onOpen: (MenuId) -> Unit) {
-    SectionCard(spacing = 8) {
+    val tampil = remember(ustadz, user) { UstadzHariIniBeranda.susun(ustadz, user) }
+    UstadzHariIniContent(tampil, ustadz, bisaBuka, onOpen)
+}
+
+@Composable
+private fun UstadzHariIniContent(tampil: UstadzHariIniTampil, ustadz: UstadzRingkas, bisaBuka: Boolean, onOpen: (MenuId) -> Unit) {
+    SectionCard(spacing = 4) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             SectionTitle("Ustadz hari ini")
             if (bisaBuka) LinkAction("Lihat semua", { onOpen(MenuId.ABSENSI_USTADZ) })
         }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-            AngkaLabel(ustadz.hadir, "hadir")
-            AngkaLabel(ustadz.tidakHadir, "tidak hadir")
-            AngkaLabel(ustadz.belumDicatat, "belum dicatat")
+        when {
+            !tampil.adaDaftar -> Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+                AngkaLabel(ustadz.hadir, "hadir")
+                AngkaLabel(ustadz.tidakHadir, "tidak hadir")
+                AngkaLabel(ustadz.belumDicatat, "belum dicatat")
+            }
+            tampil.baris.isEmpty() -> Text("Belum ada ustadz lain yang perlu ditampilkan.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            else -> tampil.baris.forEach { UstadzRow(it) }
         }
-        // Server melarang pencatatan atas nama sendiri kecuali ADMIN/TU, jadi catatan ini benar untuk akun varian ini.
-        if (user.ustadzId != null && !MenuResolver.mayRecordOwnUstadzAttendance(user.roles)) {
-            Text("Absensi Anda sendiri dicatat oleh piket lain.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (tampil.lainnya > 0) {
+            Text("dan ${tampil.lainnya} ustadz lainnya", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
+        }
+        // Server melarang pencatatan atas nama sendiri kecuali ADMIN/TU, jadi catatan ini benar untuk akun yang barisnya disembunyikan.
+        if (tampil.catatanSendiri) {
+            Text("Absensi Anda sendiri dicatat oleh piket lain.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
+        }
+    }
+}
+
+/** Satu baris ustadz; dibaca TalkBack sebagai satu kalimat ("Ustadz Hasan, Fiqih, Hadir"). */
+@Composable
+private fun UstadzRow(u: UstadzHariIni) {
+    val label = when (u.status) {
+        StatusHadir.HADIR -> "Hadir"
+        StatusHadir.TIDAK_HADIR -> "Tidak hadir"
+        StatusHadir.BELUM_DICATAT -> "Belum dicatat"
+    }
+    Column {
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        Row(
+            Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(vertical = 8.dp).semantics(mergeDescendants = true) {},
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Box(Modifier.size(40.dp).background(MaterialTheme.colorScheme.surfaceContainerHighest, CircleShape), contentAlignment = Alignment.Center) {
+                Text(Inisial.dari(u.nama), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurface)
+            }
+            Column(Modifier.weight(1f)) {
+                Text(u.nama, style = MaterialTheme.typography.titleMedium.copy(fontSize = 14.sp), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                if (!u.mapelDiajar.isNullOrBlank()) {
+                    Text(u.mapelDiajar.orEmpty(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+            StatusPill(label, u.status)
         }
     }
 }
