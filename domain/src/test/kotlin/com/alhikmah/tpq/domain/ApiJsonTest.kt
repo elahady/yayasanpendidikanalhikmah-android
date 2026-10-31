@@ -47,6 +47,7 @@ class ApiJsonTest {
         assertNull(list[0].catatanProgressMadin)
         assertEquals("2", list[1].kelas)
         assertEquals("Wustho - Kelas 2", list[1].keteranganKelas)
+        assertEquals("Jenjang Wustho · Kelas 2", list[1].keteranganJenjangKelas)
     }
 
     @Test

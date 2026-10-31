@@ -38,6 +38,10 @@ data class Santri(
     /** Contoh: "Ula - Kelas 3". */
     val keteranganKelas: String
         get() = listOfNotNull(jenjang?.label, kelas?.takeIf { it.isNotBlank() }?.let { "Kelas $it" }).joinToString(" - ")
+
+    /** Contoh: "Jenjang Ula · Kelas 3" (kartu anak di Beranda wali); kosong bila keduanya tidak ada. */
+    val keteranganJenjangKelas: String
+        get() = listOfNotNull(jenjang?.label?.let { "Jenjang $it" }, kelas?.takeIf { it.isNotBlank() }?.let { "Kelas $it" }).joinToString(" · ")
 }
 
 data class Ustadz(
