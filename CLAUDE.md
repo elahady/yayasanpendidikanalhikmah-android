@@ -4,7 +4,9 @@ App Android (Jetpack Compose) untuk TPQ & Madrasah Diniyah Yayasan Pendidikan Al
 
 ## Status Pengembangan
 
-_Diperbarui 31 Oktober 2026 (Tahap 3, versi 1)._
+_Diperbarui 31 Oktober 2026 (Tahap 3, versi 1). Rencana besar, keputusan role, dan status backend/deploy: `CLAUDE.md` repo web (`C:\Project\Personal\yayasanpendidikanalhikmah-web-app`, bagian Status Pengembangan)._
+
+> ⚠️ **Repo ini belum punya remote git**: seluruh commit hanya ada di PC utama pemilik. Sebelum pindah PC/sesi lain, remote harus dibuat dan di-push (keputusan pemilik), kalau tidak pekerjaan tahap 3 tidak ikut.
 
 ### Sudah selesai
 - Semua scope versi 1 dikerjakan terhadap kontrak API (lihat bawah): login + token aman, cek sesi `GET /me`, 401 kembali ke login, beranda berbasis role (multi-role), rekap harian, absensi ustadz/santri (tulis + lihat), daftar santri + detail + ubah progress, Anak Saya (riwayat absensi 30 hari + progress).
@@ -17,6 +19,9 @@ _Diperbarui 31 Oktober 2026 (Tahap 3, versi 1)._
 - Ikon launcher/splash memakai `logo.png` web (194x194) yang di-upscale; minta logo resolusi lebih tinggi/vektor bila ada.
 - Belum ada: keystore & signing rilis, R8/minify, GitHub Actions/CI, remote git (sengaja belum dibuat; keputusan pemilik), notifikasi push dan mode offline (rencana versi 2).
 - Tidak ada UI untuk memilih tema manual (mengikuti sistem).
+- Backend produksi belum di-deploy dan subdomain `tpq-alhikmah.roziqrizal.com` belum aktif (menunggu DNS), jadi build release belum bisa login ke server sungguhan. Uji debug lewat backend lokal (repo web: `npm run dev`, MySQL XAMPP, seed akun per role).
+- Pertanyaan terbuka: jilid Nahdliyah berlaku untuk jenjang mana saja (UI sementara menampilkan editor jilid untuk semua santri).
+- Rilis Play Store (akun pribadi): keystore, kebijakan privasi, data safety, closed testing; lihat daftar di CLAUDE.md repo web.
 
 ## Perintah
 
