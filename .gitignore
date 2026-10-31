@@ -1,0 +1,25 @@
+# Gradle dan hasil build
+.gradle/
+build/
+.kotlin/
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Konfigurasi lokal (path SDK, kunci rilis): jangan pernah di-commit
+local.properties
+keystore.properties
+*.jks
+*.keystore
+
+# IDE
+.idea/
+*.iml
+.vscode/
+bin/
+
+# Artefak
+*.apk
+*.aab
+*.hprof
+.DS_Store
