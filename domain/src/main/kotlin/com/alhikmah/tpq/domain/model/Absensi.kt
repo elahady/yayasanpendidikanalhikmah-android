@@ -20,8 +20,10 @@ data class RekapCounts(
     val belumDicatat: Int,
 )
 
+/** [hariBelajar] false bila [tanggal] libur (Sabtu/Minggu); server lama tidak mengirimnya -> true. */
 data class Rekap(
     val tanggal: String,
     val santri: RekapCounts,
     val ustadz: RekapCounts,
+    val hariBelajar: Boolean = true,
 )

@@ -157,10 +157,10 @@ class DashboardTest {
     @Test
     fun `fake dashboard menghitung ringkasan dari data dan perhatian belum dicatat`() = runTest {
         val repo = FakeTpqRepository(user = FakeData.userAdmin)
-        repo.simpanAbsensiSantri("s1", "2026-10-31", true, null)
-        repo.simpanAbsensiSantri("s2", "2026-10-31", false, null)
-        repo.simpanAbsensiUstadz("u1", "2026-10-31", true, null)
-        val d = repo.dashboard("2026-10-31")
+        repo.simpanAbsensiSantri("s1", "2026-10-30", true, null)
+        repo.simpanAbsensiSantri("s2", "2026-10-30", false, null)
+        repo.simpanAbsensiUstadz("u1", "2026-10-30", true, null)
+        val d = repo.dashboard("2026-10-30")
         val r = assertNotNull(d.ringkasan)
         assertNull(d.anak)
         assertEquals(FakeData.santri.size, r.santri.total)
@@ -178,8 +178,8 @@ class DashboardTest {
     @Test
     fun `fake piket murni tidak mendapat perhatian atau aktivitas santri`() = runTest {
         val piket = User("p", "Piket", setOf(Role.PIKET), null)
-        val repo = FakeTpqRepository(user = piket, seedSantri = listOf(FakeData.entry("s1", "2026-10-31", true)))
-        val r = assertNotNull(repo.dashboard("2026-10-31").ringkasan)
+        val repo = FakeTpqRepository(user = piket, seedSantri = listOf(FakeData.entry("s1", "2026-10-30", true)))
+        val r = assertNotNull(repo.dashboard("2026-10-30").ringkasan)
         assertTrue(r.perhatian.none { it.kode.startsWith("SANTRI") })
         assertTrue(r.aktivitas.none { it.jenis == "ABSENSI_SANTRI" })
     }
@@ -208,9 +208,9 @@ class DashboardTest {
             FakeData.entry("s2", "2026-10-28", true), // hari belajar karena santri lain punya entri; s1 belum dicatat
         )
         val repo = FakeTpqRepository(user = FakeData.userWali, seedSantri = seed, anakIds = setOf("s1"))
-        val k = assertNotNull(repo.dashboard("2026-10-31").anak).single().kehadiran
+        val k = assertNotNull(repo.dashboard("2026-11-02").anak).single().kehadiran
         assertEquals(
-            listOf("2026-10-28", "2026-10-29", "2026-10-30", "2026-10-31"),
+            listOf("2026-10-28", "2026-10-29", "2026-10-30", "2026-11-02"),
             k.hari.map { it.tanggal },
         )
         assertEquals(1, k.hadir)

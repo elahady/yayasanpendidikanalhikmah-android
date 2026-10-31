@@ -60,9 +60,9 @@ class UstadzDaftarParsingTest {
     @Test
     fun `fake menghitung daftar ustadz urut nama dari absensi`() = runTest {
         val repo = FakeTpqRepository(user = FakeData.userAdmin)
-        repo.simpanAbsensiUstadz("u3", "2026-10-31", true, null)
-        repo.simpanAbsensiUstadz("u1", "2026-10-31", false, null)
-        val u = repo.dashboard("2026-10-31").ringkasan!!.ustadz
+        repo.simpanAbsensiUstadz("u3", "2026-10-30", true, null)
+        repo.simpanAbsensiUstadz("u1", "2026-10-30", false, null)
+        val u = repo.dashboard("2026-10-30").ringkasan!!.ustadz
         assertEquals(FakeData.ustadz.sortedBy { it.nama.lowercase() }.map { it.id }, u.daftar.map { it.id })
         assertEquals(StatusHadir.TIDAK_HADIR, u.daftar.first { it.id == "u1" }.status)
         assertEquals(StatusHadir.HADIR, u.daftar.first { it.id == "u3" }.status)
@@ -217,9 +217,9 @@ class TrenKehadiranTest {
 
     @Test
     fun `rata-rata dari data contoh dan label awal akhir`() {
-        val t = assertNotNull(TrenKehadiran.susun(FakeData.trenContoh, "2026-10-31"))
+        val t = assertNotNull(TrenKehadiran.susun(FakeData.trenContoh, "2026-10-30"))
         assertEquals(14, t.batang.size)
-        assertEquals("15 Okt", t.labelAwal)
+        assertEquals("13 Okt", t.labelAwal)
         assertEquals("Hari ini · 89%", t.labelAkhir)
         assertTrue(t.rataRataPersen in 80..95)
     }

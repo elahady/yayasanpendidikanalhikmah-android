@@ -63,7 +63,8 @@ object ApiJson {
 
     fun parseRekap(body: String): Rekap = guard {
         val obj = JSONObject(body)
-        Rekap(obj.getString("tanggal"), counts(obj.getJSONObject("santri")), counts(obj.getJSONObject("ustadz")))
+        // `hariBelajar` baru (31 Okt 2026): server lama tidak mengirimnya, jadi dianggap hari belajar.
+        Rekap(obj.getString("tanggal"), counts(obj.getJSONObject("santri")), counts(obj.getJSONObject("ustadz")), obj.optBoolean("hariBelajar", true))
     }
 
     /**
@@ -76,6 +77,8 @@ object ApiJson {
             tanggal = obj.getString("tanggal"),
             ringkasan = if (obj.isNull("ringkasan")) null else ringkasan(obj.getJSONObject("ringkasan")),
             anak = if (obj.isNull("anak")) null else objects(obj.getJSONArray("anak")).map(::anak),
+            // `hariBelajar` baru (31 Okt 2026): server lama tidak mengirimnya, jadi dianggap hari belajar.
+            hariBelajar = obj.optBoolean("hariBelajar", true),
         )
     }
 

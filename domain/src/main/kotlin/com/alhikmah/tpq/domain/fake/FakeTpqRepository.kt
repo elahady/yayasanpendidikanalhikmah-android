@@ -31,6 +31,7 @@ import com.alhikmah.tpq.domain.model.Role
 import com.alhikmah.tpq.domain.model.Santri
 import com.alhikmah.tpq.domain.model.User
 import com.alhikmah.tpq.domain.model.Ustadz
+import com.alhikmah.tpq.domain.util.Jadwal
 import com.alhikmah.tpq.domain.util.Tanggal
 import java.time.LocalDate
 
@@ -80,12 +81,16 @@ object FakeData {
         UstadzHariIni("u9", "Ustadzah Zulfa", "Tajwid", StatusHadir.HADIR),
     )
 
-    /** 14 hari belajar terakhir (urut naik), hari terakhir belum lengkap (71 dari 80 tercatat). */
+    /** Hari sampel "hari ini" untuk dashboard hari belajar (Jumat) dan hari libur (Sabtu keesokan harinya). */
+    const val HARI_BELAJAR_SAMPEL = "2026-10-30"
+    const val HARI_LIBUR_SAMPEL = "2026-10-31"
+
+    /** 14 hari belajar (Senin-Jumat) terakhir sampai [HARI_BELAJAR_SAMPEL] (urut naik), hari terakhir belum lengkap (71 dari 80 tercatat). */
     val trenContoh: List<TrenHarian> = listOf(
-        "2026-10-15" to 76, "2026-10-16" to 79, "2026-10-17" to 73, "2026-10-19" to 77, "2026-10-20" to 80,
-        "2026-10-21" to 72, "2026-10-22" to 76, "2026-10-23" to 79, "2026-10-26" to 75, "2026-10-27" to 73,
-        "2026-10-28" to 77, "2026-10-29" to 78, "2026-10-30" to 74,
-    ).map { (tanggal, hadir) -> TrenHarian(tanggal, hadir, 86) } + TrenHarian("2026-10-31", 71, 80)
+        "2026-10-13" to 76, "2026-10-14" to 79, "2026-10-15" to 73, "2026-10-16" to 77, "2026-10-19" to 80,
+        "2026-10-20" to 72, "2026-10-21" to 76, "2026-10-22" to 79, "2026-10-23" to 75, "2026-10-26" to 73,
+        "2026-10-27" to 77, "2026-10-28" to 78, "2026-10-29" to 74,
+    ).map { (tanggal, hadir) -> TrenHarian(tanggal, hadir, 86) } + TrenHarian(HARI_BELAJAR_SAMPEL, 71, 80)
 
     val ringkasan = Ringkasan(
         santri = SantriRingkas(86, 71, 9, 6, mapOf(Jenjang.ULA to 61, Jenjang.WUSTHO to 25), perJilid),
@@ -98,17 +103,17 @@ object FakeData {
             Perhatian("PROGRESS_LAMA", 5, "5 santri progress belum berubah lebih dari 60 hari", "Budi, Citra, Dimas dan 2 lainnya", AksiPerhatian.DAFTAR_SANTRI),
         ),
         aktivitas = listOf(
-            Aktivitas("2026-10-31T01:12:00.000Z", "Ust. Hasan", "ABSENSI_SANTRI", "Ust. Hasan mencatat absensi santri (12 santri)"),
-            Aktivitas("2026-10-31T00:48:00.000Z", "Ust. Zainal", "ABSENSI_USTADZ", "Ust. Zainal mencatat absensi ustadz (7 ustadz)"),
-            Aktivitas("2026-10-30T09:20:00.000Z", "Bu Nur", "ABSENSI_SANTRI", "Bu Nur mencatat absensi santri (14 santri)"),
+            Aktivitas("2026-10-30T01:12:00.000Z", "Ust. Hasan", "ABSENSI_SANTRI", "Ust. Hasan mencatat absensi santri (12 santri)"),
+            Aktivitas("2026-10-30T00:48:00.000Z", "Ust. Zainal", "ABSENSI_USTADZ", "Ust. Zainal mencatat absensi ustadz (7 ustadz)"),
+            Aktivitas("2026-10-29T09:20:00.000Z", "Bu Nur", "ABSENSI_SANTRI", "Bu Nur mencatat absensi santri (14 santri)"),
         ),
     )
 
-    val dashboardAdmin = Dashboard("2026-10-31", ringkasan, null)
+    val dashboardAdmin = Dashboard(HARI_BELAJAR_SAMPEL, ringkasan, null)
 
     /** Piket + ustadz: ustadz 7 dari 9 sudah tercatat tersisa 2 (dipakai kartu tugas piket). */
     val dashboardTugas = Dashboard(
-        "2026-10-31",
+        HARI_BELAJAR_SAMPEL,
         ringkasan.copy(
             ustadz = UstadzRingkas(
                 9, 6, 1, 2,
@@ -118,19 +123,28 @@ object FakeData {
         null,
     )
 
-    private val hariWali: List<HariKehadiran> = (1..30).map { i ->
-        val status = when (i) {
-            10, 18 -> StatusHadir.TIDAK_HADIR
-            30 -> StatusHadir.BELUM_DICATAT
-            else -> StatusHadir.HADIR
+    /** 1-30 Okt 2026 hanya hari belajar (server tidak mengirim Sabtu/Minggu); hari terakhir ([HARI_BELAJAR_SAMPEL]) belum dicatat. */
+    private val hariWali: List<HariKehadiran> = (1..30)
+        .map { LocalDate.of(2026, 10, it) }
+        .filter { Jadwal.hariBelajar(it) }
+        .map { d ->
+            val status = when (d.dayOfMonth) {
+                9, 15 -> StatusHadir.TIDAK_HADIR
+                30 -> StatusHadir.BELUM_DICATAT
+                else -> StatusHadir.HADIR
+            }
+            HariKehadiran(Tanggal.toApi(d), status)
         }
-        HariKehadiran("2026-10-${i.toString().padStart(2, '0')}", status)
-    }
 
     val anakAisyah = AnakDashboard(
         santri = Santri("s1", "Aisyah Nur Hidayah", Jenjang.ULA, "2", Jilid.JILID_3, "Madin: sudah sampai materi fiqih bab wudhu. Bacaan makin lancar, tinggal dilatih panjang-pendek pada mad."),
         diperbaruiPada = "2026-10-29T09:20:00.000Z",
-        kehadiran = KehadiranAnak(27, 2, 1, hariWali),
+        kehadiran = KehadiranAnak(
+            hadir = hariWali.count { it.status == StatusHadir.HADIR },
+            tidakHadir = hariWali.count { it.status == StatusHadir.TIDAK_HADIR },
+            belumDicatat = hariWali.count { it.status == StatusHadir.BELUM_DICATAT },
+            hari = hariWali,
+        ),
     )
 
     val anakHanif = AnakDashboard(
@@ -139,12 +153,34 @@ object FakeData {
         kehadiran = KehadiranAnak(0, 0, 0, emptyList()),
     )
 
-    val dashboardWali = Dashboard("2026-10-31", null, listOf(anakAisyah, anakHanif))
+    val dashboardWali = Dashboard(HARI_BELAJAR_SAMPEL, null, listOf(anakAisyah, anakHanif))
+
+    // ---- contoh hari libur (Sabtu): `hariBelajar=false`, belumDicatat 0, tanpa item belum-dicatat (kontrak "Jadwal") ----
+
+    /** Tren, aktivitas, dan perhatian lain tetap ada; angka hari itu nol karena tidak ada kegiatan. */
+    val ringkasanLibur = ringkasan.copy(
+        santri = ringkasan.santri.copy(hadir = 0, tidakHadir = 0, belumDicatat = 0),
+        ustadz = UstadzRingkas(ringkasan.ustadz.total, 0, 0, 0, emptyList()),
+        perhatian = ringkasan.perhatian.filter { it.kode != "SANTRI_BELUM_DICATAT" && it.kode != "USTADZ_BELUM_DICATAT" },
+    )
+
+    val dashboardAdminLibur = Dashboard(HARI_LIBUR_SAMPEL, ringkasanLibur, null, hariBelajar = false)
+
+    val dashboardTugasLibur = Dashboard(HARI_LIBUR_SAMPEL, ringkasanLibur, null, hariBelajar = false)
+
+    /** Wali: `kehadiran.hari` tidak memuat tanggal libur; kartu kehadiran tetap menampilkan hari belajar sebelumnya. */
+    val dashboardWaliLibur = Dashboard(HARI_LIBUR_SAMPEL, null, listOf(anakAisyah, anakHanif), hariBelajar = false)
 
     fun entry(subjectId: String, tanggal: String, hadir: Boolean, keterangan: String? = null, bisaDiubah: Boolean = true) =
         AbsensiEntry("e-$subjectId-$tanggal", subjectId, tanggal, hadir, keterangan, "Pak Tata Usaha", bisaDiubah)
 
-    fun rekap(tanggal: String) = Rekap(tanggal, RekapCounts(40, 45, 2), RekapCounts(5, 6, 0))
+    /** Contoh rekap; hari libur: `hariBelajar=false` dan belumDicatat 0 seperti server. */
+    fun rekap(tanggal: String): Rekap =
+        if (Jadwal.hariBelajar(tanggal)) {
+            Rekap(tanggal, RekapCounts(40, 45, 2), RekapCounts(5, 6, 0))
+        } else {
+            Rekap(tanggal, RekapCounts(0, 45, 0), RekapCounts(0, 6, 0), hariBelajar = false)
+        }
 }
 
 /**
@@ -230,6 +266,7 @@ class FakeTpqRepository(
     override suspend fun simpanAbsensiSantri(santriId: String, tanggal: String, hadir: Boolean, keterangan: String?): AbsensiEntry {
         check()
         if (!user.hasAny(Role.ADMIN, Role.TU, Role.USTADZ)) forbid()
+        tolakBilaLibur(tanggal)
         return upsert(absensiSantri, santriId, tanggal, hadir, keterangan)
     }
 
@@ -244,7 +281,13 @@ class FakeTpqRepository(
         if (!isAdmin && ustadzId == user.ustadzId) {
             throw ApiException(ApiError(ErrorCodes.SELF_ATTENDANCE_FORBIDDEN, "Anda tidak boleh mengisi absensi atas nama diri sendiri.", 403))
         }
+        tolakBilaLibur(tanggal)
         return upsert(absensiUstadz, ustadzId, tanggal, hadir, keterangan)
+    }
+
+    /** Server menolak pencatatan pada Sabtu/Minggu dengan 422 VALIDATION (kontrak "Jadwal"). */
+    private fun tolakBilaLibur(tanggal: String) {
+        if (!Jadwal.hariBelajar(tanggal)) throw ApiException(ApiError(ErrorCodes.VALIDATION, Jadwal.PESAN_SERVER_LIBUR, 422))
     }
 
     private fun upsert(
@@ -276,10 +319,13 @@ class FakeTpqRepository(
         val sHadir = absensiSantri.values.count { it.tanggal == tanggal && it.hadir }
         val uCount = absensiUstadz.values.count { it.tanggal == tanggal }
         val uHadir = absensiUstadz.values.count { it.tanggal == tanggal && it.hadir }
+        val hariBelajar = Jadwal.hariBelajar(date)
+        // Hari libur tidak dihitung "belum dicatat" (kontrak "Jadwal").
         return Rekap(
             Tanggal.toApi(date),
-            RekapCounts(sHadir, santriData.size, santriData.size - sCount),
-            RekapCounts(uHadir, ustadzList.size, ustadzList.size - uCount),
+            RekapCounts(sHadir, santriData.size, if (hariBelajar) santriData.size - sCount else 0),
+            RekapCounts(uHadir, ustadzList.size, if (hariBelajar) ustadzList.size - uCount else 0),
+            hariBelajar,
         )
     }
 
@@ -311,14 +357,16 @@ class FakeTpqRepository(
         val date = if (tanggal == null) Tanggal.today() else Tanggal.fromApi(tanggal) ?: throw ApiException(ApiError.fromResponse(422, null))
         val iso = Tanggal.toApi(date)
         val nonWali = user.roles.any { it != Role.WALI }
+        val hariBelajar = Jadwal.hariBelajar(date)
         return Dashboard(
             tanggal = iso,
-            ringkasan = if (nonWali) ringkasan(iso) else null,
+            ringkasan = if (nonWali) ringkasan(iso, libur = !hariBelajar) else null,
             anak = if (Role.WALI in user.roles) anakIds.mapNotNull { id -> santriData.firstOrNull { it.id == id } }.map { anak(it, date) } else null,
+            hariBelajar = hariBelajar,
         )
     }
 
-    private fun ringkasan(tanggal: String): Ringkasan {
+    private fun ringkasan(tanggal: String, libur: Boolean): Ringkasan {
         val hariIni = absensiSantri.values.filter { it.tanggal == tanggal }
         val sHadir = hariIni.count { it.hadir }
         val sTidak = hariIni.count { !it.hadir }
@@ -329,7 +377,7 @@ class FakeTpqRepository(
             total = santriData.size,
             hadir = sHadir,
             tidakHadir = sTidak,
-            belumDicatat = santriData.size - sHadir - sTidak,
+            belumDicatat = if (!libur) santriData.size - sHadir - sTidak else 0,
             perJenjang = Jenjang.entries.associateWith { j -> santriData.count { it.jenjang == j } },
             perJilid = Jilid.entries.associateWith { j -> santriData.count { it.jilidSaatIni == j } },
         )
@@ -343,7 +391,7 @@ class FakeTpqRepository(
                 }
                 UstadzHariIni(u.id, u.nama, u.mapelDiajar, status)
             }
-        val ustadz = UstadzRingkas(ustadzList.size, uHadir, uTidak, ustadzList.size - uHadir - uTidak, daftarUstadz)
+        val ustadz = UstadzRingkas(ustadzList.size, uHadir, uTidak, if (!libur) ustadzList.size - uHadir - uTidak else 0, daftarUstadz)
 
         // Hari belajar = tanggal yang punya >= 1 entri absensi santri; maksimal 14 terakhir sampai tanggal (urut naik).
         val hariBelajar = absensiSantri.values.map { it.tanggal }.filter { it <= tanggal }.distinct().sorted().takeLast(TREN_HARI)
@@ -354,7 +402,7 @@ class FakeTpqRepository(
 
         val perhatian = buildList {
             if (MenuResolver.canViewAbsensiSantri(user.roles)) {
-                val belum = santriData.filter { s -> hariIni.none { it.subjectId == s.id } }
+                val belum = if (!libur) santriData.filter { s -> hariIni.none { it.subjectId == s.id } } else emptyList()
                 if (belum.isNotEmpty()) {
                     add(Perhatian("SANTRI_BELUM_DICATAT", belum.size, "${belum.size} santri belum dicatat absensinya", namaRingkas(belum.map { it.nama }), AksiPerhatian.ABSENSI_SANTRI))
                 }
@@ -368,7 +416,7 @@ class FakeTpqRepository(
                     }
                 }
             }
-            val ustBelum = ustadzList.filter { u -> ustHariIni.none { it.subjectId == u.id } }
+            val ustBelum = if (!libur) ustadzList.filter { u -> ustHariIni.none { it.subjectId == u.id } } else emptyList()
             if (ustBelum.isNotEmpty()) {
                 add(Perhatian("USTADZ_BELUM_DICATAT", ustBelum.size, "${ustBelum.size} ustadz belum dicatat absensinya", namaRingkas(ustBelum.map { it.nama }), AksiPerhatian.ABSENSI_USTADZ))
             }
@@ -393,8 +441,10 @@ class FakeTpqRepository(
     private fun anak(santri: Santri, tanggal: LocalDate): AnakDashboard {
         val iso = Tanggal.toApi(tanggal)
         val hariBelajar = absensiSantri.values.map { it.tanggal }.toSet() + iso
+        // Tanggal libur tidak ikut sebagai BELUM_DICATAT; hanya bila anak ini punya entri di hari libur itu (data lama).
         val hari = (29 downTo 0).map { Tanggal.toApi(tanggal.minusDays(it.toLong())) }
             .filter { it in hariBelajar }
+            .filter { Jadwal.hariBelajar(it) || absensiSantri.containsKey(santri.id to it) }
             .map { d ->
                 val status = when (absensiSantri[santri.id to d]?.hadir) {
                     true -> StatusHadir.HADIR

@@ -6,11 +6,14 @@ import kotlin.math.roundToInt
 /**
  * Bahan layar Beranda dari `GET /dashboard` (docs/api-contract.md di repo web).
  * [ringkasan] null untuk akun WALI murni; [anak] null bila akun tidak punya role WALI.
+ * [hariBelajar] false bila [tanggal] hari libur (Sabtu/Minggu): Beranda menampilkan keadaan libur, bukan kartu kehadiran 0%.
+ * Server lama tidak mengirimnya -> true.
  */
 data class Dashboard(
     val tanggal: String,
     val ringkasan: Ringkasan?,
     val anak: List<AnakDashboard>?,
+    val hariBelajar: Boolean = true,
 )
 
 data class Ringkasan(

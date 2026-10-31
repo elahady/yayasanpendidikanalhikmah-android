@@ -26,6 +26,9 @@ object Tanggal {
         null
     }
 
+    /** `Senin`, `Selasa`, ... `Minggu`. */
+    fun namaHari(date: LocalDate): String = hari[date.dayOfWeek.value - 1]
+
     /** `Senin, 2 November 2026`. */
     fun label(date: LocalDate): String =
         "${hari[date.dayOfWeek.value - 1]}, ${date.dayOfMonth} ${bulan[date.monthValue - 1]} ${date.year}"
