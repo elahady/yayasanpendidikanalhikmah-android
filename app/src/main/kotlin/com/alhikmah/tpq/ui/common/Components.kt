@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -41,6 +42,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.alhikmah.tpq.R
 import com.alhikmah.tpq.domain.api.ApiError
+import com.alhikmah.tpq.domain.util.Jadwal
 import com.alhikmah.tpq.domain.util.Load
 import com.alhikmah.tpq.domain.util.Tanggal
 import java.time.Instant
@@ -172,5 +174,27 @@ fun DateBar(date: LocalDate, onDateChange: (LocalDate) -> Unit, modifier: Modifi
             },
             dismissButton = { TextButton(onClick = { showPicker = false }) { Text("Batal") } },
         ) { DatePicker(state = state) }
+    }
+}
+
+/**
+ * Spanduk "Libur — TPQ belajar Senin–Jumat" untuk layar absensi/rekap saat tanggal terpilih Sabtu/Minggu (teks, bukan hanya warna).
+ * [keterangan] menjelaskan akibatnya di layar itu; tombol memindahkan tanggal ke hari belajar terakhir (tinggi sentuh >= 48dp).
+ */
+@Composable
+fun LiburBanner(keterangan: String, onKeHariBelajarTerakhir: () -> Unit, modifier: Modifier = Modifier) {
+    Surface(
+        modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        shape = MaterialTheme.shapes.medium,
+    ) {
+        Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(Jadwal.BANNER_LIBUR, style = MaterialTheme.typography.titleSmall)
+            Text(keterangan, style = MaterialTheme.typography.bodySmall)
+            TextButton(onClick = onKeHariBelajarTerakhir, modifier = Modifier.heightIn(min = 48.dp)) {
+                Text(Jadwal.AKSI_HARI_BELAJAR_TERAKHIR, style = MaterialTheme.typography.labelLarge)
+            }
+        }
     }
 }

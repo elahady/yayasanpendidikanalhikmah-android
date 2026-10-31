@@ -38,8 +38,10 @@ import com.alhikmah.tpq.domain.model.User
 import com.alhikmah.tpq.domain.roster.Roster
 import com.alhikmah.tpq.domain.roster.RosterRow
 import com.alhikmah.tpq.domain.util.Load
+import com.alhikmah.tpq.domain.util.Tanggal
 import com.alhikmah.tpq.ui.common.DateBar
 import com.alhikmah.tpq.ui.common.EmptyBox
+import com.alhikmah.tpq.ui.common.LiburBanner
 import com.alhikmah.tpq.ui.common.LoadContent
 import com.alhikmah.tpq.ui.common.Pill
 import com.alhikmah.tpq.ui.common.TpqTopBar
@@ -58,6 +60,7 @@ fun AbsensiScreen(kind: AbsensiKind, user: User, onBack: () -> Unit) {
         state = state,
         onBack = onBack,
         onTanggal = vm::setTanggal,
+        onKeHariBelajarTerakhir = vm::keHariBelajarTerakhir,
         onRetry = vm::load,
         onQuery = vm::onQuery,
         onHadir = vm::setHadir,
@@ -71,6 +74,7 @@ fun AbsensiContent(
     state: AbsensiUiState,
     onBack: () -> Unit,
     onTanggal: (LocalDate) -> Unit,
+    onKeHariBelajarTerakhir: () -> Unit,
     onRetry: () -> Unit,
     onQuery: (String) -> Unit,
     onHadir: (String, Boolean) -> Unit,
@@ -83,6 +87,13 @@ fun AbsensiContent(
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).imePadding()) {
             DateBar(state.tanggal, onTanggal, Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+            if (state.libur) {
+                LiburBanner(
+                    "Absensi tidak dapat dicatat pada hari libur. Data yang sudah ada tetap bisa dilihat.",
+                    onKeHariBelajarTerakhir,
+                    Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                )
+            }
             LoadContent(state.load, onRetry) { rows ->
                 RosterList(state, rows, onQuery, onHadir, onKeterangan, onSave)
             }
@@ -111,7 +122,10 @@ private fun RosterList(
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Pill("Hadir ${summary.hadir}", MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer)
                     Pill("Tidak hadir ${summary.tidakHadir}", MaterialTheme.colorScheme.secondaryContainer, MaterialTheme.colorScheme.onSecondaryContainer)
-                    Pill("Belum dicatat ${summary.belumDicatat}", MaterialTheme.colorScheme.surfaceContainerHigh, MaterialTheme.colorScheme.onSurfaceVariant)
+                    // Hari libur tidak dihitung "belum dicatat" (sama dengan server).
+                    if (!state.libur) {
+                        Pill("Belum dicatat ${summary.belumDicatat}", MaterialTheme.colorScheme.surfaceContainerHigh, MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                 }
                 if (!state.canWrite) Note("Anda hanya dapat melihat absensi ini.")
                 if (state.selfHidden) Note("Nama Anda tidak ditampilkan: ustadz tidak boleh mengisi absensi atas nama diri sendiri.")
@@ -174,7 +188,7 @@ private fun RosterRowCard(
                     row.person.keterangan?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                 }
                 when {
-                    entry == null -> Pill("Belum dicatat", MaterialTheme.colorScheme.surfaceContainerHigh, MaterialTheme.colorScheme.onSurfaceVariant)
+                    entry == null -> Pill(if (state.libur) "Libur" else "Belum dicatat", MaterialTheme.colorScheme.surfaceContainerHigh, MaterialTheme.colorScheme.onSurfaceVariant)
                     entry.hadir -> Pill("Hadir", MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer)
                     else -> Pill("Tidak hadir", MaterialTheme.colorScheme.secondaryContainer, MaterialTheme.colorScheme.onSecondaryContainer)
                 }
@@ -214,7 +228,7 @@ private fun RosterRowCard(
                 }
             } else {
                 if (entry?.keterangan != null) Text("Keterangan: ${entry.keterangan}", style = MaterialTheme.typography.bodyMedium)
-                if (state.canWrite && status?.locked != true && entry != null) {
+                if (state.canWrite && !state.libur && status?.locked != true && entry != null) {
                     Note(
                         if (entry.dicatatOleh == null) {
                             "Data lama tanpa pencatat; hanya admin/TU yang bisa mengubahnya."
@@ -232,10 +246,10 @@ private fun RosterRowCard(
 
 // ---- Preview ----
 
-private val previewTanggal = LocalDate.of(2026, 11, 2)
+private val previewTanggal = LocalDate.of(2026, 11, 2) // Senin
 
-private fun previewState(canWrite: Boolean, kind: AbsensiKind = AbsensiKind.SANTRI): AbsensiUiState {
-    val tgl = "2026-11-02"
+private fun previewState(canWrite: Boolean, kind: AbsensiKind = AbsensiKind.SANTRI, tanggal: LocalDate = previewTanggal): AbsensiUiState {
+    val tgl = Tanggal.toApi(tanggal)
     val rows = if (kind == AbsensiKind.SANTRI) {
         Roster.merge(
             FakeData.santri.map(Roster::person),
@@ -247,23 +261,32 @@ private fun previewState(canWrite: Boolean, kind: AbsensiKind = AbsensiKind.SANT
     } else {
         Roster.merge(FakeData.ustadz.map(Roster::person), listOf(FakeData.entry("u1", tgl, hadir = true)))
     }
-    return AbsensiUiState(kind, previewTanggal, canWrite, Load.Success(rows))
+    return AbsensiUiState(kind, tanggal, canWrite, Load.Success(rows))
+}
+
+@Composable
+private fun PreviewAbsensi(state: AbsensiUiState, gelap: Boolean) {
+    AlHikmahTheme(darkTheme = gelap) { AbsensiContent(state, {}, {}, {}, {}, {}, { _, _ -> }, { _, _ -> }, {}) }
 }
 
 @Preview(showBackground = true, heightDp = 900, name = "Absensi santri (tulis)")
 @Composable
-private fun AbsensiSantriPreview() {
-    AlHikmahTheme(darkTheme = false) { AbsensiContent(previewState(true), {}, {}, {}, {}, { _, _ -> }, { _, _ -> }, {}) }
-}
+private fun AbsensiSantriPreview() = PreviewAbsensi(previewState(true), gelap = false)
 
 @Preview(showBackground = true, heightDp = 900, name = "Absensi ustadz (lihat, gelap)")
 @Composable
-private fun AbsensiUstadzReadOnlyPreview() {
-    AlHikmahTheme(darkTheme = true) { AbsensiContent(previewState(false, AbsensiKind.USTADZ), {}, {}, {}, {}, { _, _ -> }, { _, _ -> }, {}) }
-}
+private fun AbsensiUstadzReadOnlyPreview() = PreviewAbsensi(previewState(false, AbsensiKind.USTADZ), gelap = true)
 
 @Preview(showBackground = true, name = "Absensi memuat")
 @Composable
-private fun AbsensiLoadingPreview() {
-    AlHikmahTheme(darkTheme = false) { AbsensiContent(AbsensiUiState(AbsensiKind.SANTRI, previewTanggal, true), {}, {}, {}, {}, { _, _ -> }, { _, _ -> }, {}) }
-}
+private fun AbsensiLoadingPreview() = PreviewAbsensi(AbsensiUiState(AbsensiKind.SANTRI, previewTanggal, true), gelap = false)
+
+private val previewLibur = LocalDate.of(2026, 10, 31) // Sabtu
+
+@Preview(showBackground = true, heightDp = 900, name = "Absensi santri libur terang")
+@Composable
+private fun AbsensiSantriLiburTerangPreview() = PreviewAbsensi(previewState(true, tanggal = previewLibur), gelap = false)
+
+@Preview(showBackground = true, heightDp = 900, name = "Absensi ustadz libur gelap")
+@Composable
+private fun AbsensiUstadzLiburGelapPreview() = PreviewAbsensi(previewState(true, AbsensiKind.USTADZ, previewLibur), gelap = true)

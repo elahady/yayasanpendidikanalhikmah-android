@@ -29,11 +29,13 @@ import com.alhikmah.tpq.domain.api.TpqRepository
 import com.alhikmah.tpq.domain.fake.FakeData
 import com.alhikmah.tpq.domain.model.Rekap
 import com.alhikmah.tpq.domain.model.RekapCounts
+import com.alhikmah.tpq.domain.util.Jadwal
 import com.alhikmah.tpq.domain.util.Load
 import com.alhikmah.tpq.domain.util.Tanggal
 import com.alhikmah.tpq.domain.util.attempt
 import com.alhikmah.tpq.domain.util.toLoad
 import com.alhikmah.tpq.ui.common.DateBar
+import com.alhikmah.tpq.ui.common.LiburBanner
 import com.alhikmah.tpq.ui.common.LoadContent
 import com.alhikmah.tpq.ui.common.TpqTopBar
 import com.alhikmah.tpq.ui.theme.AlHikmahTheme
@@ -47,15 +49,35 @@ import java.time.LocalDate
 data class RekapUiState(
     val tanggal: LocalDate,
     val load: Load<Rekap> = Load.Loading,
-)
+) {
+    /**
+     * Tanggal libur (Sabtu/Minggu). Setelah rekap dimuat, server yang menentukan (`hariBelajar`); sebelum itu
+     * (memuat/gagal) jadwal lokal dipakai supaya spanduk libur langsung tampil.
+     */
+    val libur: Boolean get() = (load as? Load.Success)?.data?.let { !it.hariBelajar } ?: Jadwal.libur(tanggal)
+}
 
-class RekapViewModel(private val repo: TpqRepository) : ViewModel() {
-    private val _state = MutableStateFlow(RekapUiState(Tanggal.today()))
+class RekapViewModel(
+    private val repo: TpqRepository,
+    /** Tanggal awal (bawaan hari ini, Asia/Jakarta); parameter agar tes tidak bergantung pada hari tes dijalankan. */
+    hariIni: LocalDate = Tanggal.today(),
+) : ViewModel() {
+    private val _state = MutableStateFlow(RekapUiState(hariIni))
     val state: StateFlow<RekapUiState> = _state.asStateFlow()
     private var job: Job? = null
 
     init {
         load()
+    }
+
+    /**
+     * Tombol di spanduk libur: pindah ke hari belajar terakhir (Sabtu/Minggu -> Jumat). Bila server menyatakan libur untuk
+     * tanggal yang menurut jadwal lokal hari belajar (kalender libur khusus nanti), mundur ke hari belajar sebelumnya.
+     */
+    fun keHariBelajarTerakhir() {
+        val date = _state.value.tanggal
+        val tujuan = Jadwal.hariBelajarTerakhir(date).takeIf { it != date } ?: Jadwal.hariBelajarSebelum(date)
+        setTanggal(tujuan)
     }
 
     fun setTanggal(date: LocalDate) {
@@ -79,18 +101,24 @@ fun RekapScreen(onBack: () -> Unit) {
     val container = LocalAppContainer.current
     val vm: RekapViewModel = viewModel(factory = viewModelFactory { initializer { RekapViewModel(container.repository) } })
     val state by vm.state.collectAsStateWithLifecycle()
-    RekapContent(state, onBack, vm::setTanggal, vm::load)
+    RekapContent(state, onBack, vm::setTanggal, vm::keHariBelajarTerakhir, vm::load)
 }
 
 @Composable
-fun RekapContent(state: RekapUiState, onBack: () -> Unit, onTanggal: (LocalDate) -> Unit, onRetry: () -> Unit) {
+fun RekapContent(state: RekapUiState, onBack: () -> Unit, onTanggal: (LocalDate) -> Unit, onKeHariBelajarTerakhir: () -> Unit, onRetry: () -> Unit) {
     Scaffold(topBar = { TpqTopBar("Rekap Harian", onBack) }, containerColor = MaterialTheme.colorScheme.background) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             DateBar(state.tanggal, onTanggal, Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+            if (state.libur) {
+                // Kartu "0 dari N hadir" / "belum dicatat" pada hari libur menyesatkan, jadi diganti spanduk ini.
+                LiburBanner("Tidak ada rekap kehadiran pada hari libur.", onKeHariBelajarTerakhir, Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+            }
             LoadContent(state.load, onRetry) { rekap ->
-                Column(Modifier.verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    RekapCard("Santri", rekap.santri)
-                    RekapCard("Ustadz / Ustadzah", rekap.ustadz)
+                if (rekap.hariBelajar) {
+                    Column(Modifier.verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        RekapCard("Santri", rekap.santri)
+                        RekapCard("Ustadz / Ustadzah", rekap.ustadz)
+                    }
                 }
             }
         }
@@ -127,18 +155,25 @@ private fun Stat(label: String, value: Int, highlight: Boolean = false) {
     }
 }
 
-@Preview(showBackground = true, name = "Rekap")
 @Composable
-private fun RekapPreview() {
-    AlHikmahTheme(darkTheme = false) {
-        RekapContent(RekapUiState(LocalDate.of(2026, 11, 2), Load.Success(FakeData.rekap("2026-11-02"))), {}, {}, {})
+private fun PreviewRekap(tanggal: LocalDate, gelap: Boolean) {
+    AlHikmahTheme(darkTheme = gelap) {
+        RekapContent(RekapUiState(tanggal, Load.Success(FakeData.rekap(Tanggal.toApi(tanggal)))), {}, {}, {}, {})
     }
 }
 
+@Preview(showBackground = true, name = "Rekap")
+@Composable
+private fun RekapPreview() = PreviewRekap(LocalDate.of(2026, 11, 2), gelap = false)
+
 @Preview(showBackground = true, name = "Rekap gelap")
 @Composable
-private fun RekapDarkPreview() {
-    AlHikmahTheme(darkTheme = true) {
-        RekapContent(RekapUiState(LocalDate.of(2026, 11, 2), Load.Success(FakeData.rekap("2026-11-02"))), {}, {}, {})
-    }
-}
+private fun RekapDarkPreview() = PreviewRekap(LocalDate.of(2026, 11, 2), gelap = true)
+
+@Preview(showBackground = true, name = "Rekap libur terang")
+@Composable
+private fun RekapLiburPreview() = PreviewRekap(LocalDate.of(2026, 10, 31), gelap = false)
+
+@Preview(showBackground = true, name = "Rekap libur gelap")
+@Composable
+private fun RekapLiburDarkPreview() = PreviewRekap(LocalDate.of(2026, 11, 1), gelap = true)

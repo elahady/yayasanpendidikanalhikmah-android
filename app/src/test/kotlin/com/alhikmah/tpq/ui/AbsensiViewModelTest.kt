@@ -19,6 +19,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
+import java.time.LocalDate
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -38,11 +39,14 @@ class AbsensiViewModelTest {
     @AfterTest
     fun tearDown() = Dispatchers.resetMain()
 
-    private fun rows(vm: AbsensiViewModel) = (vm.state.value.load as Load.Success).data
+    // Senin tetap: tes tidak boleh bergantung pada hari tes dijalankan (Sabtu dan Minggu libur, fake menolak 422).
+    private val senin = LocalDate.of(2026, 11, 2)
+
+    private fun rows(vm: AbsensiViewModel) =(vm.state.value.load as Load.Success).data
 
     @Test
     fun `memuat roster santri dan menandai belum dicatat`() {
-        val vm = AbsensiViewModel(FakeTpqRepository(user = FakeData.userAdmin), FakeData.userAdmin, AbsensiKind.SANTRI)
+        val vm = AbsensiViewModel(FakeTpqRepository(user = FakeData.userAdmin), FakeData.userAdmin, AbsensiKind.SANTRI, senin)
         assertTrue(vm.state.value.canWrite)
         assertEquals(FakeData.santri.size, rows(vm).size)
         assertTrue(rows(vm).all { it.belumDicatat })
@@ -50,7 +54,7 @@ class AbsensiViewModelTest {
 
     @Test
     fun `simpan satu baris membuat entri dan membersihkan draft`() {
-        val vm = AbsensiViewModel(FakeTpqRepository(user = FakeData.userAdmin), FakeData.userAdmin, AbsensiKind.SANTRI)
+        val vm = AbsensiViewModel(FakeTpqRepository(user = FakeData.userAdmin), FakeData.userAdmin, AbsensiKind.SANTRI, senin)
         vm.setHadir("s1", false)
         vm.setKeterangan("s1", "Sakit")
         assertEquals(false, vm.state.value.drafts["s1"]?.hadir)
@@ -68,8 +72,8 @@ class AbsensiViewModelTest {
 
     @Test
     fun `entri yang ada hanya perlu simpan setelah diubah`() {
-        val seeded = FakeData.entry("s1", Tanggal.toApi(Tanggal.today()), hadir = true)
-        val vm = AbsensiViewModel(FakeTpqRepository(user = FakeData.userAdmin, seedSantri = listOf(seeded)), FakeData.userAdmin, AbsensiKind.SANTRI)
+        val seeded = FakeData.entry("s1", Tanggal.toApi(senin), hadir = true)
+        val vm = AbsensiViewModel(FakeTpqRepository(user = FakeData.userAdmin, seedSantri = listOf(seeded)), FakeData.userAdmin, AbsensiKind.SANTRI, senin)
         val row = rows(vm).first { it.person.id == "s1" }
         assertFalse(vm.state.value.needsSave(row))
         vm.setHadir("s1", false)
@@ -80,10 +84,10 @@ class AbsensiViewModelTest {
 
     @Test
     fun `entri yang dikunci server dan akses hanya-lihat tidak bisa diubah`() {
-        val seeded = FakeData.entry("s1", Tanggal.toApi(Tanggal.today()), hadir = true, bisaDiubah = false)
+        val seeded = FakeData.entry("s1", Tanggal.toApi(senin), hadir = true, bisaDiubah = false)
         // USTADZ biasa: entri dicatat orang lain -> dikunci server.
         val ustadz = User("x", "Ustadz Lain", setOf(com.alhikmah.tpq.domain.model.Role.USTADZ), "u2")
-        val vm = AbsensiViewModel(FakeTpqRepository(user = ustadz, seedSantri = listOf(seeded)), ustadz, AbsensiKind.SANTRI)
+        val vm = AbsensiViewModel(FakeTpqRepository(user = ustadz, seedSantri = listOf(seeded)), ustadz, AbsensiKind.SANTRI, senin)
         val locked = rows(vm).first { it.person.id == "s1" }
         assertFalse(vm.state.value.isEditable(locked))
         assertTrue(vm.state.value.isEditable(rows(vm).first { it.person.id == "s2" }))
@@ -93,7 +97,7 @@ class AbsensiViewModelTest {
 
         // PENGAWAS: hanya lihat.
         val pengawas = FakeData.userPengawas
-        val ro = AbsensiViewModel(FakeTpqRepository(user = pengawas), pengawas, AbsensiKind.SANTRI)
+        val ro = AbsensiViewModel(FakeTpqRepository(user = pengawas), pengawas, AbsensiKind.SANTRI, senin)
         assertFalse(ro.state.value.canWrite)
         assertFalse(ro.state.value.isEditable(rows(ro).first()))
     }
@@ -101,7 +105,7 @@ class AbsensiViewModelTest {
     @Test
     fun `ustadz yang tertaut ke akun disembunyikan dari absensi ustadz`() {
         val me = FakeData.userPiketUstadz // ustadzId = u3
-        val vm = AbsensiViewModel(FakeTpqRepository(user = me), me, AbsensiKind.USTADZ)
+        val vm = AbsensiViewModel(FakeTpqRepository(user = me), me, AbsensiKind.USTADZ, senin)
         assertTrue(vm.state.value.selfHidden)
         assertEquals(listOf("u1", "u2"), rows(vm).map { it.person.id }.sorted())
         assertTrue(vm.state.value.canWrite) // PIKET menulis absensi ustadz
@@ -112,7 +116,7 @@ class AbsensiViewModelTest {
         // Server menganggap akun terhubung ke u3, tetapi klien belum tahu (ustadzId null) sehingga barisnya tampil.
         val serverUser = FakeData.userPiketUstadz
         val clientUser = serverUser.copy(ustadzId = null)
-        val vm = AbsensiViewModel(FakeTpqRepository(user = serverUser), clientUser, AbsensiKind.USTADZ)
+        val vm = AbsensiViewModel(FakeTpqRepository(user = serverUser), clientUser, AbsensiKind.USTADZ, senin)
         assertTrue(rows(vm).any { it.person.id == "u3" })
         vm.save("u3")
         val status = vm.state.value.status["u3"]
@@ -129,7 +133,7 @@ class AbsensiViewModelTest {
     @Test
     fun `gagal memuat menampilkan error lalu pulih saat dicoba lagi`() {
         val repo = FakeTpqRepository(user = FakeData.userAdmin, failWith = ApiError.network())
-        val vm = AbsensiViewModel(repo, FakeData.userAdmin, AbsensiKind.SANTRI)
+        val vm = AbsensiViewModel(repo, FakeData.userAdmin, AbsensiKind.SANTRI, senin)
         val failure = assertIs<Load.Failure>(vm.state.value.load)
         assertTrue(failure.error.isConnectivity)
         repo.failWith = null
@@ -139,11 +143,11 @@ class AbsensiViewModelTest {
 
     @Test
     fun `ganti tanggal memuat ulang dan membuang draft`() {
-        val vm = AbsensiViewModel(FakeTpqRepository(user = FakeData.userAdmin), FakeData.userAdmin, AbsensiKind.SANTRI)
+        val vm = AbsensiViewModel(FakeTpqRepository(user = FakeData.userAdmin), FakeData.userAdmin, AbsensiKind.SANTRI, senin)
         vm.setHadir("s1", false)
-        vm.setTanggal(Tanggal.today().minusDays(1))
+        vm.setTanggal(senin.plusDays(1))
         assertTrue(vm.state.value.drafts.isEmpty())
-        assertEquals(Tanggal.today().minusDays(1), vm.state.value.tanggal)
+        assertEquals(senin.plusDays(1), vm.state.value.tanggal)
     }
 
     @Test

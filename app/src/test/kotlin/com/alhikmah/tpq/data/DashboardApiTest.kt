@@ -138,4 +138,54 @@ class DashboardApiTest {
         assertFailsWith<ApiException> { HttpTpqRepository(client()).ubahPassword("lama123", "baru12345") }
         assertEquals(1, unauthorizedCalls)
     }
+
+    // ---- hari libur (kontrak "Jadwal (hari belajar)") ----
+
+    @Test
+    fun `dashboard hari libur membaca hariBelajar false tingkat atas`() = runTest {
+        server.enqueue(
+            json(
+                200,
+                """{"tanggal":"2026-10-31","hariBelajar":false,"anak":null,"ringkasan":{
+                  "santri":{"total":10,"hadir":0,"tidakHadir":0,"belumDicatat":0},
+                  "ustadz":{"total":3,"hadir":0,"tidakHadir":0,"belumDicatat":0},
+                  "tren":[],"perhatian":[],"aktivitas":[]}}""",
+            ),
+        )
+        val d = HttpTpqRepository(client()).dashboard("2026-10-31")
+        assertEquals("2026-10-31", server.takeRequest().url.queryParameter("tanggal"))
+        assertFalse(d.hariBelajar)
+        assertEquals(0, d.ringkasan?.santri?.belumDicatat)
+    }
+
+    @Test
+    fun `dashboard server lama tanpa hariBelajar dianggap hari belajar`() = runTest {
+        server.enqueue(json(200, """{"tanggal":"2026-10-30","ringkasan":null,"anak":[]}"""))
+        assertTrue(HttpTpqRepository(client()).dashboard().hariBelajar)
+    }
+
+    @Test
+    fun `rekap hari libur membaca hariBelajar false`() = runTest {
+        server.enqueue(json(200, """{"tanggal":"2026-11-01","hariBelajar":false,"santri":{"hadir":0,"total":45,"belumDicatat":0},"ustadz":{"hadir":0,"total":6,"belumDicatat":0}}"""))
+        val r = HttpTpqRepository(client()).rekap("2026-11-01")
+        assertEquals("/api/v1/rekap", server.takeRequest().url.encodedPath)
+        assertFalse(r.hariBelajar)
+        assertEquals(0, r.santri.belumDicatat)
+    }
+
+    @Test
+    fun `put absensi di hari libur 422 tampil apa adanya dan tidak memicu logout`() = runTest {
+        val pesan = "TPQ libur pada hari Sabtu dan Minggu. Absensi tidak dapat dicatat."
+        server.enqueue(json(422, """{"error":{"code":"VALIDATION","message":"$pesan"}}"""))
+        server.enqueue(json(422, """{"error":{"code":"VALIDATION","message":"$pesan"}}"""))
+        val repo = HttpTpqRepository(client())
+        val santri = assertFailsWith<ApiException> { repo.simpanAbsensiSantri("s1", "2026-10-31", true, null) }
+        val ustadz = assertFailsWith<ApiException> { repo.simpanAbsensiUstadz("u1", "2026-11-01", true, null) }
+        for (e in listOf(santri, ustadz)) {
+            assertEquals(422, e.error.httpStatus)
+            assertEquals(ErrorCodes.VALIDATION, e.error.code)
+            assertEquals(pesan, e.error.message)
+        }
+        assertEquals(0, unauthorizedCalls)
+    }
 }

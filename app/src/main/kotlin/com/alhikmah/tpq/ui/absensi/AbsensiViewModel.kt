@@ -11,6 +11,7 @@ import com.alhikmah.tpq.domain.model.User
 import com.alhikmah.tpq.domain.roster.Roster
 import com.alhikmah.tpq.domain.roster.RosterPerson
 import com.alhikmah.tpq.domain.roster.RosterRow
+import com.alhikmah.tpq.domain.util.Jadwal
 import com.alhikmah.tpq.domain.util.Load
 import com.alhikmah.tpq.domain.util.Outcome
 import com.alhikmah.tpq.domain.util.Tanggal
@@ -48,7 +49,13 @@ data class AbsensiUiState(
     val query: String = "",
     /** Terisi bila satu ustadz disembunyikan karena tertaut ke akun ini. */
     val selfHidden: Boolean = false,
-)
+) {
+    /**
+     * Tanggal terpilih Sabtu/Minggu: TPQ libur, absensi tidak bisa dicatat (server menolak 422). Kontrol input dan
+     * Simpan dikunci; data lama pada tanggal itu tetap terlihat.
+     */
+    val libur: Boolean get() = Jadwal.libur(tanggal)
+}
 
 /** Nilai yang tampil di baris: draft bila ada, selain itu isi entri tersimpan, selain itu bawaan (hadir). */
 fun AbsensiUiState.effective(row: RosterRow): RowDraft =
@@ -62,12 +69,14 @@ fun AbsensiUiState.needsSave(row: RosterRow): Boolean {
 }
 
 fun AbsensiUiState.isEditable(row: RosterRow): Boolean =
-    canWrite && row.bisaDiubah && status[row.person.id]?.locked != true
+    canWrite && !libur && row.bisaDiubah && status[row.person.id]?.locked != true
 
 class AbsensiViewModel(
     private val repo: TpqRepository,
     private val user: User,
     private val kind: AbsensiKind,
+    /** Tanggal awal layar (bawaan: hari ini, Asia/Jakarta); parameter agar tes tidak bergantung pada hari tes dijalankan. */
+    hariIni: LocalDate = Tanggal.today(),
 ) : ViewModel() {
 
     private val hiddenId: String? = if (kind == AbsensiKind.USTADZ) Roster.hiddenUstadzId(user) else null
@@ -75,7 +84,7 @@ class AbsensiViewModel(
     private val _state = MutableStateFlow(
         AbsensiUiState(
             kind = kind,
-            tanggal = Tanggal.today(),
+            tanggal = hariIni,
             canWrite = MenuResolver.menuFor(user.roles).firstOrNull { it.id == kind.menu }?.access == MenuAccess.WRITE,
             selfHidden = hiddenId != null,
         ),
@@ -92,6 +101,9 @@ class AbsensiViewModel(
         _state.update { it.copy(tanggal = date) }
         load()
     }
+
+    /** Dari tanggal libur pindah ke hari belajar terakhir (Sabtu/Minggu -> Jumat); tanggal hari belajar tidak berubah. */
+    fun keHariBelajarTerakhir() = setTanggal(Jadwal.hariBelajarTerakhir(_state.value.tanggal))
 
     fun onQuery(query: String) = _state.update { it.copy(query = query) }
 
