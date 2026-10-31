@@ -48,9 +48,24 @@ import com.alhikmah.tpq.domain.model.Role
  * Varian PIKET / USTADZ (mockup MobUstadz). Kontrak tidak punya data "kelas saya", jadi bagian itu diganti ringkasan
  * santri hari ini dengan tombol ke layar yang dibolehkan role (Absensi Santri, Perbarui progress).
  * Urutan: PIKET = kartu tugas piket, ustadz hari ini, santri hari ini; USTADZ saja = santri hari ini (kartu utama), ustadz hari ini.
+ * Hari libur ([hariBelajar] false): ketiga kartu itu diganti satu kartu "Hari ini libur" (tidak ada tugas piket, tidak ada
+ * "0 dari N hadir" / "belum dicatat" yang menyesatkan); "Perlu perhatian" yang tersisa tetap tampil.
  */
 @Composable
-internal fun TugasSections(user: User, ringkasan: Ringkasan, menu: List<MenuEntry>, allowed: Set<MenuId>, onOpen: (MenuId) -> Unit) {
+internal fun TugasSections(
+    user: User,
+    ringkasan: Ringkasan,
+    tanggal: String?,
+    menu: List<MenuEntry>,
+    allowed: Set<MenuId>,
+    onOpen: (MenuId) -> Unit,
+    hariBelajar: Boolean = true,
+) {
+    if (!hariBelajar) {
+        LiburHero(tanggal)
+        if (ringkasan.perhatian.isNotEmpty()) PerhatianCard(ringkasan.perhatian, allowed, onOpen)
+        return
+    }
     val piket = Role.PIKET in user.roles
     if (piket) {
         PiketCard(ringkasan.ustadz, MenuId.ABSENSI_USTADZ in allowed, onOpen)

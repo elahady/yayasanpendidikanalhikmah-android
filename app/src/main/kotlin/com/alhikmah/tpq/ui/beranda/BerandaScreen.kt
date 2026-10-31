@@ -149,10 +149,13 @@ private fun IsiDashboard(
     val ringkasan = data.ringkasan
     when (variant) {
         BerandaVariant.ADMIN ->
-            if (ringkasan != null) AdminSections(ringkasan, data.tanggal, menu, allowed, onOpen) else RingkasanKosong()
+            if (ringkasan != null) AdminSections(ringkasan, data.tanggal, menu, allowed, onOpen, data.hariBelajar) else RingkasanKosong()
         BerandaVariant.TUGAS ->
-            if (ringkasan != null) TugasSections(user, ringkasan, menu, allowed, onOpen) else RingkasanKosong()
-        BerandaVariant.WALI -> AnakSection(data.anak.orEmpty(), anakTerpilih, onPilihAnak, bukaDetail)
+            if (ringkasan != null) TugasSections(user, ringkasan, data.tanggal, menu, allowed, onOpen, data.hariBelajar) else RingkasanKosong()
+        BerandaVariant.WALI -> {
+            if (!data.hariBelajar) LiburWaliCard(data.tanggal)
+            AnakSection(data.anak.orEmpty(), anakTerpilih, onPilihAnak, bukaDetail)
+        }
         BerandaVariant.TANPA_AKSES -> Box(Modifier.height(240.dp)) {
             EmptyBox("Belum ada menu", "Akun Anda belum punya hak akses. Hubungi admin yayasan.")
         }
@@ -313,3 +316,29 @@ private fun TugasServerLamaPreview() = PreviewBeranda(
     sukses(FakeData.dashboardTugas.copy(ringkasan = FakeData.dashboardTugas.ringkasan!!.let { it.copy(ustadz = it.ustadz.copy(daftar = emptyList())) })),
     gelap = true,
 )
+
+// ---- Hari libur (Sabtu/Minggu) ----
+
+@Preview(showBackground = true, heightDp = 1500, name = "Admin libur terang")
+@Composable
+private fun AdminLiburTerangPreview() = PreviewBeranda(FakeData.userAdmin, sukses(FakeData.dashboardAdminLibur), gelap = false)
+
+@Preview(showBackground = true, heightDp = 1500, name = "Admin libur gelap")
+@Composable
+private fun AdminLiburGelapPreview() = PreviewBeranda(FakeData.userAdmin, sukses(FakeData.dashboardAdminLibur), gelap = true)
+
+@Preview(showBackground = true, heightDp = 800, name = "Piket+Ustadz libur terang")
+@Composable
+private fun PiketUstadzLiburTerangPreview() = PreviewBeranda(FakeData.userPiketUstadz, sukses(FakeData.dashboardTugasLibur), gelap = false)
+
+@Preview(showBackground = true, heightDp = 800, name = "Ustadz libur gelap")
+@Composable
+private fun UstadzLiburGelapPreview() = PreviewBeranda(FakeData.userUstadz, sukses(FakeData.dashboardTugasLibur), gelap = true)
+
+@Preview(showBackground = true, heightDp = 1500, name = "Wali libur terang")
+@Composable
+private fun WaliLiburTerangPreview() = PreviewBeranda(FakeData.userWali, sukses(FakeData.dashboardWaliLibur), gelap = false)
+
+@Preview(showBackground = true, heightDp = 1500, name = "Wali libur gelap")
+@Composable
+private fun WaliLiburGelapPreview() = PreviewBeranda(FakeData.userWali, sukses(FakeData.dashboardWaliLibur), gelap = true)

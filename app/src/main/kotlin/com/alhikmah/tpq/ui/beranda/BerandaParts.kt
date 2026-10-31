@@ -39,6 +39,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -49,6 +50,8 @@ import com.alhikmah.tpq.domain.model.Jilid
 import com.alhikmah.tpq.domain.model.Perhatian
 import com.alhikmah.tpq.domain.model.SantriRingkas
 import com.alhikmah.tpq.domain.model.StatusHadir
+import com.alhikmah.tpq.domain.util.Jadwal
+import com.alhikmah.tpq.domain.util.Tanggal
 import com.alhikmah.tpq.ui.common.Pill
 import com.alhikmah.tpq.ui.common.menuMeta
 import com.alhikmah.tpq.ui.theme.statusColors
@@ -336,5 +339,44 @@ internal fun BatangKemajuan(fraction: Float, modifier: Modifier = Modifier) {
         if (fraction > 0f) {
             Box(Modifier.fillMaxWidth(fraction.coerceIn(0f, 1f)).height(10.dp).background(fill, RoundedCornerShape(50)))
         }
+    }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Hari libur (Sabtu/Minggu): menggantikan cincin kehadiran / kartu tugas piket yang akan menampilkan "0%" menyesatkan
+// ---------------------------------------------------------------------------------------------
+
+/** Kalimat penjelasan libur untuk tanggal dashboard; bila tanggal tak terbaca, hanya aturan jadwal. */
+private fun keteranganLibur(tanggal: String?): String =
+    Tanggal.fromApi(tanggal)?.let(Jadwal::keteranganLibur) ?: Jadwal.ATURAN
+
+/**
+ * Kartu hero "Hari ini libur" untuk varian admin dan tugas. Status dibawakan teks ("Libur"), bukan hanya warna.
+ * Dibaca pembaca layar sebagai satu elemen.
+ */
+@Composable
+internal fun LiburHero(tanggal: String?, modifier: Modifier = Modifier) {
+    val redup = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f)
+    HeroCard(modifier.semantics(mergeDescendants = true) {}) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+            Column(Modifier.weight(1f).padding(end = 12.dp)) {
+                Eyebrow("Kegiatan belajar", color = redup)
+                Text("Hari ini libur", style = MaterialTheme.typography.titleLarge.copy(fontSize = 22.sp, lineHeight = 28.sp))
+            }
+            Pill("Libur", MaterialTheme.colorScheme.onPrimary, MaterialTheme.colorScheme.primary)
+        }
+        Text(keteranganLibur(tanggal), style = MaterialTheme.typography.bodyMedium)
+    }
+}
+
+/** Keterangan libur singkat untuk varian wali (kartu biasa, bukan hero). */
+@Composable
+internal fun LiburWaliCard(tanggal: String?, modifier: Modifier = Modifier) {
+    SectionCard(modifier.semantics(mergeDescendants = true) {}, spacing = 6) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            SectionTitle("Hari ini libur")
+            Pill("Libur", MaterialTheme.colorScheme.secondaryContainer, MaterialTheme.colorScheme.onSecondaryContainer)
+        }
+        Text(keteranganLibur(tanggal), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

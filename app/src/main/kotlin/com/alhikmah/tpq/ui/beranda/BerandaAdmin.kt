@@ -42,10 +42,18 @@ import com.alhikmah.tpq.ui.theme.statusColors
 /**
  * Varian ADMIN / TU / PENGAWAS (mockup MobAdmin): cincin kehadiran santri + ustadz hadir, "Perlu perhatian"
  * (bisa diketuk bila menunya tersedia), kehadiran 14 hari (tren), tangga jilid, aktivitas terbaru, dan pintasan menu.
+ * Hari libur ([hariBelajar] false): cincin kehadiran diganti kartu "Hari ini libur"; kartu lainnya tetap.
  */
 @Composable
-internal fun AdminSections(ringkasan: Ringkasan, tanggal: String?, menu: List<MenuEntry>, allowed: Set<MenuId>, onOpen: (MenuId) -> Unit) {
-    AdminHero(ringkasan)
+internal fun AdminSections(
+    ringkasan: Ringkasan,
+    tanggal: String?,
+    menu: List<MenuEntry>,
+    allowed: Set<MenuId>,
+    onOpen: (MenuId) -> Unit,
+    hariBelajar: Boolean = true,
+) {
+    if (hariBelajar) AdminHero(ringkasan) else LiburHero(tanggal)
     PerhatianCard(ringkasan.perhatian, allowed, onOpen)
     TrenKehadiranCard(ringkasan.tren, tanggal)
     TanggaJilidCard(ringkasan.santri)
