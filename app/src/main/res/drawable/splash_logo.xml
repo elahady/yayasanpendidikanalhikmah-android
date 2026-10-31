@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Logo untuk splash: diberi ruang di tepi supaya tidak terpotong lingkaran splash (ikon splash dipotong ~2/3). -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/logo_alhikmah"
+    android:insetLeft="22dp"
+    android:insetTop="22dp"
+    android:insetRight="22dp"
+    android:insetBottom="22dp" />

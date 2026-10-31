@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Release: semua koneksi wajib HTTPS (token dan data santri). Build debug menimpa berkas ini di src/debug
+     supaya bisa menguji server pengembangan di komputer sendiri lewat HTTP. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+</network-security-config>

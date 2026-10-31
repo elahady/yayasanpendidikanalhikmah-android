@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Logo yayasan di zona aman adaptive icon (66dp dari 108dp): inset 21% tiap sisi. -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/logo_alhikmah"
+    android:inset="21%" />

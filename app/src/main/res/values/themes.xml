@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Tema jendela saja (latar saat aplikasi dibuka); tampilan sebenarnya memakai Compose (ui/theme). -->
+    <style name="Theme.AlHikmah" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/alhikmah_bg</item>
+    </style>
+
+    <!-- Splash sistem: latar krem (gelap di mode malam) dengan logo yayasan di tengah. -->
+    <style name="Theme.AlHikmah.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/alhikmah_bg</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_logo</item>
+        <item name="postSplashScreenTheme">@style/Theme.AlHikmah</item>
+    </style>
+</resources>

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Sama dengan token color-bg (terang) di app/globals.css repo web: krem hangat. Dipakai latar ikon dan splash. -->
+    <color name="alhikmah_bg">#FAF6EC</color>
+</resources>
