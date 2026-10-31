@@ -39,18 +39,21 @@ export JAVA_HOME="C:\\Program Files\\Microsoft\\jdk-17.0.20.101-hotspot"   # Git
 Mengikuti pola Rizqflow (`C:\Project\Personal\Rizqflow`): Gradle 9.7.1, AGP 9.4.1 (Kotlin bawaan AGP), Kotlin 2.4.20, Compose BOM 2026.09.00, compileSdk/targetSdk 37, minSdk 26, DI manual, JUnit Jupiter + kotlin.test. Versi semua di `gradle/libs.versions.toml`.
 
 - `:domain` - Kotlin/JVM murni (`allWarningsAsErrors`), package `com.alhikmah.tpq.domain`:
-  - `model/` Role, User, Santri (Jenjang, Jilid), Ustadz, AbsensiEntry, Rekap.
+  - `model/` Role, User (+ `username`, `ustadzNama`, `dibuatPada`, opsional), Santri (Jenjang, Jilid), Ustadz, AbsensiEntry, Rekap, `Dashboard` (Ringkasan, Perhatian, AnakDashboard, KehadiranAnak; bentuk `GET /dashboard`).
   - `api/` `ApiError`/`ApiException` (parsing body `{error:{code,message}}`, Retry-After), `ApiJson` (JSON <-> model, org.json), antarmuka `AuthApi`, `TpqRepository`, `TokenStore`.
   - `menu/MenuResolver` - aturan role -> menu (gabungan multi-role, WRITE menang atas READ), hak ubah progress, hak lihat absensi santri.
+  - `menu/BottomTabs` - tab navigasi bawah diturunkan dari `MenuResolver` (tab yang menunya tak boleh diakses role tidak muncul).
+  - `beranda/` `BerandaResolver` (pemilih varian Beranda per role), `JilidJourney` (8 tahap jilid, tahap berikutnya).
+  - `tema/ThemeSettings` (+ `ThemeMode`, antarmuka `ThemeStore`) - pilihan tampilan Ikuti sistem/Terang/Gelap; `profil/PasswordForm` - validasi lokal ubah password.
   - `roster/Roster` - menggabungkan daftar santri/ustadz dengan entri absensi satu tanggal; menyembunyikan ustadz = akun sendiri.
   - `session/SessionManager` - status sesi (Checking/LoggedOut/LoggedIn/Unreachable), login, restore lewat `/me`, `onUnauthorized`.
   - `fake/` `FakeTpqRepository`, `FakeAuthApi`, `InMemoryTokenStore` + `FakeData` (untuk preview Compose dan tes; meniru aturan server).
-  - `util/` `Tanggal` (zona Asia/Jakarta, label Indonesia), `Load`/`Outcome`/`attempt`.
+  - `util/` `Tanggal` (zona Asia/Jakarta, label Indonesia, waktu ISO server), `Inisial` (avatar), `Load`/`Outcome`/`attempt`.
   - `org.json` hanya `compileOnly` (sudah ada di Android); tes JVM memakai `org.json:json`.
 - `:app` - package `com.alhikmah.tpq`:
   - `AlHikmahApplication` + `AppContainer` (DI manual) dan `LocalAppContainer`.
-  - `data/` `ApiClient` (OkHttp: Bearer, error -> ApiException, 401 -> `onUnauthorized`, tanpa redirect, tanpa log body), `HttpRepositories`, `KeystoreTokenStore` (AES-GCM, kunci Android Keystore, disimpan di SharedPreferences; pengganti EncryptedSharedPreferences yang sudah deprecated).
-  - `ui/` tema (`theme/`), komponen bersama (`common/`), `AppRoot` (NavHost + pemilih layar berdasar `SessionState`), layar per fitur (`login/`, `beranda/`, `rekap/`, `absensi/`, `santri/`). Tiap layar: composable stateful (ambil ViewModel) + composable stateless `XContent` yang dipakai `@Preview` dengan `FakeData`.
+  - `data/` `ApiClient` (OkHttp: Bearer, error -> ApiException, 401 -> `onUnauthorized`, tanpa redirect, tanpa log body), `HttpRepositories`, `KeystoreTokenStore` (AES-GCM, kunci Android Keystore, disimpan di SharedPreferences; pengganti EncryptedSharedPreferences yang sudah deprecated), `SharedPrefsThemeStore` (pilihan tema, SharedPreferences biasa).
+  - `ui/` tema (`theme/`), komponen bersama (`common/`), `AppRoot` (pemilih layar berdasar `SessionState`) + `MainNav` (NavHost + navigasi bawah), layar per fitur (`login/`, `beranda/` per varian, `profil/`, `rekap/`, `absensi/`, `santri/`). Tiap layar: composable stateful (ambil ViewModel) + composable stateless `XContent` yang dipakai `@Preview` dengan `FakeData`.
 
 ## Konvensi
 
@@ -62,6 +65,8 @@ Mengikuti pola Rizqflow (`C:\Project\Personal\Rizqflow`): Gradle 9.7.1, AGP 9.4.
 - Warna jangan di-hardcode di layar; pakai `MaterialTheme.colorScheme`. Token brand dipetakan dari `app/globals.css` web ke `ui/theme/Color.kt` (ubah di web dulu, samakan di sini). Font Fraunces (judul) + Plus Jakarta Sans (isi), lisensi OFL di `assets/licenses`.
 - Status tidak boleh hanya lewat warna: selalu ada teks/pill ("Hadir", "Belum dicatat").
 - Logika yang bisa diuji taruh di `:domain` atau ViewModel, bukan di composable.
+- Warna status kehadiran/aksen grafik di luar skema Material lewat `MaterialTheme.statusColors` (`ui/theme/StatusColors.kt`, token mockup `--okbg/--no/--accent` dengan varian gelap), jangan hardcode. Kotak/batang "hadir" memakai `colorScheme.primary`.
+- Target sentuh >= 48dp (tombol, chip, baris yang bisa diketuk), `contentDescription` bermakna; grafik/kisi dibaca sebagai satu elemen dengan deskripsi ringkasan (`clearAndSetSemantics`). Bentuk membedakan status selain warna (tidak hadir = tanda ×, belum dicatat = garis putus-putus).
 
 ## Keputusan
 
@@ -77,3 +82,10 @@ Mengikuti pola Rizqflow (`C:\Project\Personal\Rizqflow`): Gradle 9.7.1, AGP 9.4.
 - `dicatatOleh` null (data lama) ditangani: hanya ADMIN/TU yang bisa mengubah (`bisaDiubah` dari server).
 - Tanpa refresh token (kontrak): token 30 hari, 401 membuang token dan kembali ke login; jaringan putus saat cek sesi menampilkan layar "Coba lagi" tanpa membuang token.
 - `allowBackup=false`: token tidak ikut cadangan otomatis.
+- **Pemilih varian Beranda** (`BerandaResolver`, satu-satunya tempat aturan): ada ADMIN/TU/PENGAWAS -> varian admin; selain itu ada PIKET/USTADZ -> varian tugas; selain itu WALI murni -> varian wali; role tak dikenal semua -> "Belum ada menu". Akun WALI + role lain mendapat varian role lain **ditambah** bagian "Anak saya" di bawahnya bila server mengirim `anak` tidak kosong. Beranda memanggil `GET /dashboard` tanpa `tanggal` (hari ini menurut server, bukan jam HP) dan memuat ulang saat kembali ke layar (resume) serta lewat tarik-untuk-muat-ulang / tombol Muat ulang.
+- Beranda admin: "Perlu perhatian" menaut ke layar `aksi` item **hanya bila menunya ada untuk role itu** (`Perhatian.tujuan(allowed)`); selain itu tampil sebagai teks tanpa panah. `tren` dan `aktivitas` di `/dashboard` sudah diparse tetapi belum ditampilkan (tidak ada di mockup).
+- Beranda tugas (PIKET/USTADZ): kontrak tidak punya data "kelas saya", jadi diganti kartu "Santri hari ini" (angka dari `ringkasan.santri`) dengan tombol ke Absensi Santri / Perbarui progress sesuai hak (`MenuResolver`); daftar nama ustadz per baris tidak ada di `/dashboard`, jadi "Ustadz hari ini" berupa angka hadir/tidak hadir/belum + tautan ke Absensi Ustadz.
+- Beranda wali: tahap berikutnya hanya "Tahap berikutnya Jilid N." (materi per jilid tidak ada di kontrak); catatan = `catatanProgressMadin` dengan tanggal `diperbaruiPada` ("Diperbarui ..."), bukan nama ustadz; kotak 30 hari = `kehadiran.hari` apa adanya (hanya hari belajar).
+- **Navigasi bawah** (`BottomTabs` di :domain, turunan `MenuResolver`): Beranda, Absensi (layar pilihan Rekap/Absensi Ustadz/Absensi Santri yang boleh), Santri, Anak saya, Profil; hanya tab yang menunya boleh. WALI murni: Beranda, Anak saya, Profil. Bilah hanya tampil di layar tab; layar dalam (rekap, absensi, detail) memakai tombol kembali. Tombol Keluar ada di Profil (dengan konfirmasi).
+- **Tema**: pilihan Ikuti sistem/Terang/Gelap disimpan di SharedPreferences "tampilan" (bukan rahasia), dibaca `ThemeSettings` (:domain, teruji) dan diterapkan di `MainActivity` ke `AlHikmahTheme` + gaya status bar/navigation bar (`enableEdgeToEdge` dipanggil ulang saat berubah). Catatan: latar jendela/splash tetap mengikuti tema sistem (bisa berkedip sesaat bila pilihan berbeda dari sistem).
+- **Ubah password**: validasi lokal hanya isi + 8-72 karakter + cocok (`PasswordForm`); sisanya pesan server apa adanya (422 "Password sekarang salah.", 429 + Retry-After). 422 tidak memicu logout; hanya 401 yang memicu `onUnauthorized`. Mockup menampilkan "Sesi berlaku sampai ..." tetapi kontrak tidak memuat masa berlaku token, jadi diganti "Akun dibuat" (`dibuatPada`) dan "Ustadz tertaut" (`ustadzNama`) bila ada. Ikon notifikasi di header mockup admin tidak dibuat (belum ada fiturnya).

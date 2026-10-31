@@ -58,7 +58,7 @@ import com.alhikmah.tpq.ui.theme.AlHikmahTheme
 // ---------------------------------------------------------------------------------------------
 
 @Composable
-fun SantriListScreen(title: String, searchable: Boolean, onBack: () -> Unit, onOpen: (String) -> Unit) {
+fun SantriListScreen(title: String, searchable: Boolean, onBack: (() -> Unit)?, onOpen: (String) -> Unit) {
     val container = LocalAppContainer.current
     val vm: SantriListViewModel = viewModel(
         key = "santri-list-$searchable",
@@ -73,7 +73,7 @@ fun SantriListContent(
     title: String,
     searchable: Boolean,
     state: SantriListUiState,
-    onBack: () -> Unit,
+    onBack: (() -> Unit)?,
     onQuery: (String) -> Unit,
     onRetry: () -> Unit,
     onOpen: (String) -> Unit,
