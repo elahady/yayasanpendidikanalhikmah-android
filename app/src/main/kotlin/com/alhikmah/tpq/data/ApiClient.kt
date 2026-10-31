@@ -2,7 +2,9 @@ package com.alhikmah.tpq.data
 
 import com.alhikmah.tpq.domain.api.ApiError
 import com.alhikmah.tpq.domain.api.ApiException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.HttpUrl
@@ -67,22 +69,21 @@ class ApiClient(
         } catch (e: IOException) {
             throw ApiException(ApiError.network(), e)
         }
-        val status: Int
-        val retryAfter: String?
-        val body: String
-        try {
-            response.use {
-                status = it.code
-                retryAfter = it.header("Retry-After")
-                body = it.body.string()
+        // Membaca body = I/O socket yang memblokir; coroutine pemanggil biasanya berjalan di thread utama
+        // (viewModelScope), jadi wajib dipindah ke Dispatchers.IO (kalau tidak: NetworkOnMainThreadException).
+        val reply = try {
+            withContext(Dispatchers.IO) {
+                response.use { Reply(it.code, it.header("Retry-After"), it.body.string()) }
             }
         } catch (e: IOException) {
             throw ApiException(ApiError.network(), e)
         }
-        if (status in 200..299) return body
-        if (status == 401 && bearer != null) onUnauthorized()
-        throw ApiException(ApiError.fromResponse(status, body, retryAfter))
+        if (reply.status in 200..299) return reply.body
+        if (reply.status == 401 && bearer != null) onUnauthorized()
+        throw ApiException(ApiError.fromResponse(reply.status, reply.body, reply.retryAfter))
     }
+
+    private class Reply(val status: Int, val retryAfter: String?, val body: String)
 
     private suspend fun Call.await(): Response = suspendCancellableCoroutine { continuation ->
         continuation.invokeOnCancellation { cancel() }
