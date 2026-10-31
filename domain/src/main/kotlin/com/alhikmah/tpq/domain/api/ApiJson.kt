@@ -1,6 +1,18 @@
 package com.alhikmah.tpq.domain.api
 
 import com.alhikmah.tpq.domain.model.AbsensiEntry
+import com.alhikmah.tpq.domain.model.Aktivitas
+import com.alhikmah.tpq.domain.model.AksiPerhatian
+import com.alhikmah.tpq.domain.model.AnakDashboard
+import com.alhikmah.tpq.domain.model.Dashboard
+import com.alhikmah.tpq.domain.model.HariKehadiran
+import com.alhikmah.tpq.domain.model.KehadiranAnak
+import com.alhikmah.tpq.domain.model.Perhatian
+import com.alhikmah.tpq.domain.model.Ringkasan
+import com.alhikmah.tpq.domain.model.SantriRingkas
+import com.alhikmah.tpq.domain.model.StatusHadir
+import com.alhikmah.tpq.domain.model.TrenHarian
+import com.alhikmah.tpq.domain.model.UstadzRingkas
 import com.alhikmah.tpq.domain.model.Jenjang
 import com.alhikmah.tpq.domain.model.Jilid
 import com.alhikmah.tpq.domain.model.ProgressUpdate
@@ -53,6 +65,23 @@ object ApiJson {
         Rekap(obj.getString("tanggal"), counts(obj.getJSONObject("santri")), counts(obj.getJSONObject("ustadz")))
     }
 
+    /**
+     * `GET /dashboard`. Field inti (angka santri/ustadz, id/nama anak) wajib; tren/perhatian/aktivitas yang hilang
+     * dianggap kosong, dan kunci jilid/jenjang yang tak ada dianggap 0 supaya server yang sedikit berbeda tidak membuat layar gagal.
+     */
+    fun parseDashboard(body: String): Dashboard = guard {
+        val obj = JSONObject(body)
+        Dashboard(
+            tanggal = obj.getString("tanggal"),
+            ringkasan = if (obj.isNull("ringkasan")) null else ringkasan(obj.getJSONObject("ringkasan")),
+            anak = if (obj.isNull("anak")) null else objects(obj.getJSONArray("anak")).map(::anak),
+        )
+    }
+
+    /** Body `POST /me/password`. */
+    fun passwordBody(passwordLama: String, passwordBaru: String): JSONObject =
+        JSONObject().put("passwordLama", passwordLama).put("passwordBaru", passwordBaru)
+
     fun progressBody(update: ProgressUpdate): JSONObject = JSONObject().apply {
         update.jilid?.let { put("jilidSaatIni", it.name) }
         if (update.updateCatatan) put("catatanProgressMadin", update.catatan ?: JSONObject.NULL)
@@ -74,8 +103,66 @@ object ApiJson {
 
     private fun user(obj: JSONObject): User {
         val roles = obj.getJSONArray("roles").strings().mapNotNull(Role::fromApi).toSet()
-        return User(obj.getString("id"), obj.getString("nama"), roles, obj.optStringOrNull("ustadzId"))
+        return User(
+            id = obj.getString("id"),
+            nama = obj.getString("nama"),
+            roles = roles,
+            ustadzId = obj.optStringOrNull("ustadzId"),
+            // Tiga field di bawah baru (31 Okt 2026): server lama tidak mengirimnya, jadi opsional.
+            username = obj.optStringOrNull("username"),
+            ustadzNama = obj.optStringOrNull("ustadzNama"),
+            dibuatPada = obj.optStringOrNull("dibuatPada"),
+        )
     }
+
+    private fun ringkasan(obj: JSONObject): Ringkasan {
+        val santri = obj.getJSONObject("santri")
+        val ustadz = obj.getJSONObject("ustadz")
+        val perJenjang = santri.optJSONObject("perJenjang")
+        val perJilid = santri.optJSONObject("perJilid")
+        return Ringkasan(
+            santri = SantriRingkas(
+                total = santri.getInt("total"),
+                hadir = santri.getInt("hadir"),
+                tidakHadir = santri.getInt("tidakHadir"),
+                belumDicatat = santri.getInt("belumDicatat"),
+                perJenjang = Jenjang.entries.associateWith { perJenjang?.optInt(it.name, 0) ?: 0 },
+                perJilid = Jilid.entries.associateWith { perJilid?.optInt(it.name, 0) ?: 0 },
+            ),
+            ustadz = UstadzRingkas(ustadz.getInt("total"), ustadz.getInt("hadir"), ustadz.getInt("tidakHadir"), ustadz.getInt("belumDicatat")),
+            tren = optObjects(obj, "tren").map { TrenHarian(it.getString("tanggal"), it.getInt("hadir"), it.getInt("tercatat")) },
+            perhatian = optObjects(obj, "perhatian").map {
+                Perhatian(
+                    kode = it.getString("kode"),
+                    jumlah = it.optInt("jumlah", 0),
+                    judul = it.getString("judul"),
+                    keterangan = it.optStringOrNull("keterangan"),
+                    aksi = AksiPerhatian.fromApi(it.optStringOrNull("aksi")),
+                )
+            },
+            aktivitas = optObjects(obj, "aktivitas").map {
+                Aktivitas(it.getString("waktu"), it.getString("oleh"), it.getString("jenis"), it.getString("ringkas"))
+            },
+        )
+    }
+
+    private fun anak(obj: JSONObject): AnakDashboard {
+        val kehadiran = obj.getJSONObject("kehadiran")
+        return AnakDashboard(
+            santri = santri(obj.getJSONObject("santri")),
+            diperbaruiPada = obj.optStringOrNull("diperbaruiPada"),
+            kehadiran = KehadiranAnak(
+                hadir = kehadiran.getInt("hadir"),
+                tidakHadir = kehadiran.getInt("tidakHadir"),
+                belumDicatat = kehadiran.getInt("belumDicatat"),
+                hari = optObjects(kehadiran, "hari").map { HariKehadiran(it.getString("tanggal"), StatusHadir.fromApi(it.optStringOrNull("status"))) },
+            ),
+        )
+    }
+
+    private fun objects(array: JSONArray): List<JSONObject> = (0 until array.length()).map { array.getJSONObject(it) }
+
+    private fun optObjects(obj: JSONObject, key: String): List<JSONObject> = obj.optJSONArray(key)?.let(::objects) ?: emptyList()
 
     private fun santri(obj: JSONObject) = Santri(
         id = obj.getString("id"),

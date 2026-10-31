@@ -23,6 +23,12 @@ data class User(
     val roles: Set<Role>,
     /** Terisi bila akun tertaut ke seorang ustadz; dipakai menyembunyikan diri sendiri dari absensi ustadz. */
     val ustadzId: String?,
+    /** Field baru di kontrak (31 Okt 2026): opsional, null bila server lama tidak mengirimnya. */
+    val username: String? = null,
+    /** Nama ustadz yang tertaut ke akun (null bila tidak tertaut). */
+    val ustadzNama: String? = null,
+    /** ISO-8601, kapan akun dibuat. */
+    val dibuatPada: String? = null,
 ) {
     fun hasAny(vararg candidates: Role): Boolean = candidates.any { it in roles }
 }
