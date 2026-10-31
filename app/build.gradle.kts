@@ -1,7 +1,21 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
 }
+
+// Host server pengembangan untuk build debug, dari local.properties (tidak di-commit):
+//   debug.apiHost=192.168.1.15:3000   -> HP fisik di WiFi yang sama dengan PC
+// Tanpa isian ini dipakai emulator (10.0.2.2 = localhost komputer).
+val localProperties = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
+}
+val debugApiHost: String = localProperties.getProperty("debug.apiHost")
+    ?.trim()
+    ?.takeIf { it.isNotEmpty() }
+    ?: "10.0.2.2:3000"
 
 android {
     namespace = "com.alhikmah.tpq"
@@ -19,8 +33,9 @@ android {
 
     buildTypes {
         debug {
-            // Emulator Android: 10.0.2.2 = localhost komputer. HTTP hanya diizinkan di build debug (src/debug/res/xml/network_security_config.xml).
-            buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:3000/api/v1\"")
+            // Emulator Android: 10.0.2.2 = localhost komputer; HP fisik: atur debug.apiHost di local.properties.
+            // HTTP hanya diizinkan di build debug (src/debug/res/xml/network_security_config.xml).
+            buildConfigField("String", "API_BASE_URL", "\"http://$debugApiHost/api/v1\"")
         }
         release {
             isMinifyEnabled = false

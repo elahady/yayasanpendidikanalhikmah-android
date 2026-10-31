@@ -19,7 +19,7 @@ _Diperbarui 31 Oktober 2026 (Tahap 3, versi 1). Rencana besar, keputusan role, d
 - Ikon launcher/splash memakai `logo.png` web (194x194) yang di-upscale; minta logo resolusi lebih tinggi/vektor bila ada.
 - Belum ada: keystore & signing rilis, R8/minify, GitHub Actions/CI, notifikasi push dan mode offline (rencana versi 2).
 - Tidak ada UI untuk memilih tema manual (mengikuti sistem).
-- Backend produksi belum di-deploy dan subdomain `tpq-alhikmah.roziqrizal.com` belum aktif (menunggu DNS), jadi build release belum bisa login ke server sungguhan. Uji debug lewat backend lokal (repo web: `npm run dev`, MySQL XAMPP, seed akun per role).
+- Backend tahap 2 sudah di-deploy ke VPS (31 Oktober 2026, `http://103.54.170.198:8083`; login ADMIN terverifikasi lewat API), tetapi subdomain `tpq-alhikmah.roziqrizal.com` belum aktif (menunggu DNS), jadi build release belum bisa login. Build debug dengan `debug.apiHost=103.54.170.198:8083` bisa login ke VPS (HTTP polos: jangan dipakai untuk data sungguhan). Alternatif: backend lokal (repo web: `npm run dev`, MySQL XAMPP, seed).
 - Pertanyaan terbuka: jilid Nahdliyah berlaku untuk jenjang mana saja (UI sementara menampilkan editor jilid untuk semua santri).
 - Rilis Play Store (akun pribadi): keystore, kebijakan privasi, data safety, closed testing; lihat daftar di CLAUDE.md repo web.
 
@@ -57,7 +57,7 @@ Mengikuti pola Rizqflow (`C:\Project\Personal\Rizqflow`): Gradle 9.7.1, AGP 9.4.
 - Bahasa UI, komentar, dan pesan commit: Indonesia. Akhiri pesan commit dengan baris `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>`.
 - Stage file satu per satu (bukan `git add -A`). **Jangan push / buat remote** tanpa diminta.
 - **Kontrak API adalah sumber kebenaran**: `docs/api-contract.md` di repo web (termasuk "Catatan implementasi"). Ubah kontrak dulu, baru kode. Jangan mengarang endpoint/field.
-- Base URL hanya di satu tempat: `BuildConfig.API_BASE_URL` (`app/build.gradle.kts`; debug `http://10.0.2.2:3000/api/v1`, release `https://tpq-alhikmah.roziqrizal.com/api/v1`). Cleartext HANYA diizinkan di build debug lewat `app/src/debug/res/xml/network_security_config.xml` (host 10.0.2.2/localhost/127.0.0.1); release HTTPS-only.
+- Base URL hanya di satu tempat: `BuildConfig.API_BASE_URL` (`app/build.gradle.kts`; debug `http://<debug.apiHost>/api/v1`, bawaan `10.0.2.2:3000` untuk emulator; release `https://tpq-alhikmah.roziqrizal.com/api/v1`). Untuk HP fisik / server VPS isi `debug.apiHost=103.54.170.198:8083` di `local.properties` (tidak di-commit), lalu build ulang. Cleartext hanya di build debug (`app/src/debug/res/xml/network_security_config.xml`, seluruh debug karena format XML tak mendukung wildcard IP); release HTTPS-only.
 - Pesan error selalu dari `ApiError.message` (body server), jangan dibuat ulang di UI.
 - Warna jangan di-hardcode di layar; pakai `MaterialTheme.colorScheme`. Token brand dipetakan dari `app/globals.css` web ke `ui/theme/Color.kt` (ubah di web dulu, samakan di sini). Font Fraunces (judul) + Plus Jakarta Sans (isi), lisensi OFL di `assets/licenses`.
 - Status tidak boleh hanya lewat warna: selalu ada teks/pill ("Hadir", "Belum dicatat").
