@@ -5,6 +5,7 @@ import com.alhikmah.tpq.domain.api.AuthApi
 import com.alhikmah.tpq.domain.api.LoginResult
 import com.alhikmah.tpq.domain.api.TpqRepository
 import com.alhikmah.tpq.domain.model.AbsensiEntry
+import com.alhikmah.tpq.domain.model.Dashboard
 import com.alhikmah.tpq.domain.model.ProgressUpdate
 import com.alhikmah.tpq.domain.model.Rekap
 import com.alhikmah.tpq.domain.model.Santri
@@ -57,4 +58,14 @@ class HttpTpqRepository(private val client: ApiClient) : TpqRepository {
         )
 
     override suspend fun rekap(tanggal: String): Rekap = ApiJson.parseRekap(client.get("rekap", query = mapOf("tanggal" to tanggal)))
+
+    // tanggal null = "hari ini" menurut server (kontrak), jadi query tidak dikirim.
+    override suspend fun dashboard(tanggal: String?): Dashboard =
+        ApiJson.parseDashboard(client.get("dashboard", query = mapOf("tanggal" to tanggal)))
+
+    // Jawaban `{ "ok": true }` tidak dibaca; yang penting 2xx. 422 (password lama salah, dll.) jadi ApiException dengan pesan server
+    // dan tidak memicu onUnauthorized (hanya 401 yang memicu).
+    override suspend fun ubahPassword(passwordLama: String, passwordBaru: String) {
+        client.post("me", "password", body = ApiJson.passwordBody(passwordLama, passwordBaru))
+    }
 }

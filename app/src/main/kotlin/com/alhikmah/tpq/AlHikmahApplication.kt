@@ -6,8 +6,10 @@ import com.alhikmah.tpq.data.ApiClient
 import com.alhikmah.tpq.data.HttpAuthApi
 import com.alhikmah.tpq.data.HttpTpqRepository
 import com.alhikmah.tpq.data.KeystoreTokenStore
+import com.alhikmah.tpq.data.SharedPrefsThemeStore
 import com.alhikmah.tpq.domain.api.TpqRepository
 import com.alhikmah.tpq.domain.session.SessionManager
+import com.alhikmah.tpq.domain.tema.ThemeSettings
 
 /** Penampung dependensi (DI manual, sama dengan pola Rizqflow). Dibuat sekali di [AlHikmahApplication]. */
 class AppContainer(application: Application) {
@@ -22,6 +24,9 @@ class AppContainer(application: Application) {
     val session: SessionManager = SessionManager(HttpAuthApi(apiClient), tokenStore)
 
     val repository: TpqRepository = HttpTpqRepository(apiClient)
+
+    /** Pilihan tema (Ikuti sistem / Terang / Gelap), disimpan di SharedPreferences biasa. */
+    val themeSettings: ThemeSettings = ThemeSettings(SharedPrefsThemeStore(application))
 }
 
 class AlHikmahApplication : Application() {
