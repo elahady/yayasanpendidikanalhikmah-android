@@ -4,22 +4,21 @@ App Android (Jetpack Compose) untuk TPQ & Madrasah Diniyah Yayasan Pendidikan Al
 
 ## Status Pengembangan
 
-_Diperbarui 31 Oktober 2026 (Tahap 3, versi 1). Rencana besar, keputusan role, dan status backend/deploy: `CLAUDE.md` repo web (`C:\Project\Personal\yayasanpendidikanalhikmah-web-app`, bagian Status Pengembangan)._
+_Diperbarui 31 Oktober 2026 (Tahap 4: beranda per peran, profil, tema). Rencana besar, keputusan role, dan status backend/deploy: `CLAUDE.md` repo web (`C:\Project\Personal\yayasanpendidikanalhikmah-web-app`, bagian Status Pengembangan)._
 
-> Remote git: `https://github.com/elahady/yayasanpendidikanalhikmah-android` (branch `main`, sudah di-push 31 Oktober 2026).
+> Remote git: `https://github.com/elahady/yayasanpendidikanalhikmah-android` (branch `main`). Commit tahap 4 (beranda/profil/tema) **belum di-push**: menunggu keputusan pemilik.
 
 ### Sudah selesai
-- Semua scope versi 1 dikerjakan terhadap kontrak API (lihat bawah): login + token aman, cek sesi `GET /me`, 401 kembali ke login, beranda berbasis role (multi-role), rekap harian, absensi ustadz/santri (tulis + lihat), daftar santri + detail + ubah progress, Anak Saya (riwayat absensi 30 hari + progress).
-- Kontrak sudah diselaraskan dengan "Catatan implementasi" backend tahap 2 (PIKET tanpa absensi santri, INTERNAL, Retry-After, login akun nonaktif 403, dicatatOleh null).
-- `./gradlew test assembleDebug assembleRelease` lulus (51 tes `:domain`, 24 tes `:app`).
+- Scope versi 1 terhadap kontrak API: login + token aman, cek sesi `GET /me`, 401 kembali ke login, rekap harian, absensi ustadz/santri (tulis + lihat), daftar santri + detail + ubah progress, Anak Saya.
+- Tahap 4 (31 Oktober 2026): beranda per peran dari `GET /dashboard` (varian admin / tugas piket+ustadz / wali), navigasi bawah berbasis `MenuResolver`, layar Profil (identitas, pemilih tema Ikuti sistem/Terang/Gelap tersimpan, ubah password lewat `POST /me/password`, keluar). `./gradlew test assembleDebug assembleRelease` lulus (90 tes `:domain`, 44 tes `:app`).
+- **Sudah diuji di emulator terhadap backend lokal tahap 4** (data uji + akun per peran): login ADMIN, PENGAWAS, PIKET+USTADZ, dan WALI (2 anak) menampilkan beranda yang benar dan tidak crash; tema Gelap berlaku (status bar dan bilah navigasi ikut); dialog Ubah password terbuka. Crash `NetworkOnMainThreadException` setelah login sudah diperbaiki (body respons dibaca di `Dispatchers.IO`).
 
 ### Belum / berikutnya
-- **Belum pernah dijalankan di emulator/perangkat dan belum dites ke backend sungguhan** (hanya unit test dengan server palsu MockWebServer + fake repository). Langkah pertama berikutnya: jalankan backend lokal (`http://10.0.2.2:3000`) dan uji tiap role di emulator.
-- Preview Compose ditulis tetapi belum dilihat di Android Studio; tampilan dark/light belum diperiksa visual.
-- Ikon launcher/splash memakai `logo.png` web (194x194) yang di-upscale; minta logo resolusi lebih tinggi/vektor bila ada.
+- **Belum diuji di emulator/perangkat:** menyimpan password baru lewat dialog (API-nya sudah dites di backend), pull-to-refresh, tab Absensi dan Santri, layar Anak saya penuh, peran PIKET murni dan USTADZ murni, tampilan wali di mode terang/gelap. Preview Compose belum dilihat di Android Studio.
+- **Backend tahap 4 belum di-deploy ke VPS**: build debug yang menunjuk VPS (`debug.apiHost=103.54.170.198:8083`) menampilkan "Endpoint tidak ditemukan" di Beranda sampai deploy dilakukan. Subdomain `tpq-alhikmah.roziqrizal.com` juga belum aktif (menunggu DNS), jadi build release belum bisa login.
+- Beranda belum menampilkan `tren` (14 hari) dan `aktivitas` (sudah diparse dari API); daftar nama ustadz per baris di beranda piket butuh field tambahan di `/dashboard`; ikon notifikasi dari mockup tidak dibuat.
+- Ikon launcher/splash memakai `logo.png` web (194x194) yang di-upscale; minta logo resolusi lebih tinggi/vektor bila ada. Latar jendela/splash mengikuti tema sistem (bisa berkedip bila pilihan tema berbeda).
 - Belum ada: keystore & signing rilis, R8/minify, GitHub Actions/CI, notifikasi push dan mode offline (rencana versi 2).
-- Tidak ada UI untuk memilih tema manual (mengikuti sistem).
-- Backend tahap 2 sudah di-deploy ke VPS (31 Oktober 2026, `http://103.54.170.198:8083`; login ADMIN terverifikasi lewat API), tetapi subdomain `tpq-alhikmah.roziqrizal.com` belum aktif (menunggu DNS), jadi build release belum bisa login. Build debug dengan `debug.apiHost=103.54.170.198:8083` bisa login ke VPS (HTTP polos: jangan dipakai untuk data sungguhan). Alternatif: backend lokal (repo web: `npm run dev`, MySQL XAMPP, seed).
 - Pertanyaan terbuka: jilid Nahdliyah berlaku untuk jenjang mana saja (UI sementara menampilkan editor jilid untuk semua santri).
 - Rilis Play Store (akun pribadi): keystore, kebijakan privasi, data safety, closed testing; lihat daftar di CLAUDE.md repo web.
 
