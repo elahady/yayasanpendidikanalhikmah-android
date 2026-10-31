@@ -277,6 +277,7 @@ class AktivitasBerandaTest {
         assertEquals(6, t.size)
         assertEquals("ringkas 1", t.first().ringkas)
         assertEquals("Hari ini, 08.12", t.first().waktu)
+        assertEquals("x", t.first().oleh)
         assertTrue(AktivitasBeranda.susun(emptyList(), hariIni).isEmpty())
     }
 }

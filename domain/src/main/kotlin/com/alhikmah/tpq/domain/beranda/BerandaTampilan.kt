@@ -140,12 +140,12 @@ object WaktuAktivitas {
 }
 
 /** Baris aktivitas siap tampil. */
-data class AktivitasTampil(val ringkas: String, val waktu: String)
+data class AktivitasTampil(val ringkas: String, val waktu: String, val oleh: String)
 
 object AktivitasBeranda {
     const val MAKS = 6
 
     /** Server sudah mengurutkan terbaru dahulu dan membatasi 6; di sini hanya dipotong lagi sebagai pengaman. */
     fun susun(aktivitas: List<Aktivitas>, hariIni: LocalDate, maks: Int = MAKS): List<AktivitasTampil> =
-        aktivitas.take(maks).map { AktivitasTampil(it.ringkas, WaktuAktivitas.label(it.waktu, hariIni)) }
+        aktivitas.take(maks).map { AktivitasTampil(it.ringkas, WaktuAktivitas.label(it.waktu, hariIni), it.oleh) }
 }

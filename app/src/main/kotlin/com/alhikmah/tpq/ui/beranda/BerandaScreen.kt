@@ -149,7 +149,7 @@ private fun IsiDashboard(
     val ringkasan = data.ringkasan
     when (variant) {
         BerandaVariant.ADMIN ->
-            if (ringkasan != null) AdminSections(ringkasan, menu, allowed, onOpen) else RingkasanKosong()
+            if (ringkasan != null) AdminSections(ringkasan, data.tanggal, menu, allowed, onOpen) else RingkasanKosong()
         BerandaVariant.TUGAS ->
             if (ringkasan != null) TugasSections(user, ringkasan, menu, allowed, onOpen) else RingkasanKosong()
         BerandaVariant.WALI -> AnakSection(data.anak.orEmpty(), anakTerpilih, onPilihAnak, bukaDetail)
@@ -287,5 +287,29 @@ private fun MemuatPreview() = PreviewBeranda(FakeData.userAdmin, BerandaUiState(
 private fun GalatPreview() = PreviewBeranda(
     FakeData.userAdmin,
     BerandaUiState(load = Load.Failure(ApiError.network())),
+    gelap = true,
+)
+
+@Preview(showBackground = true, heightDp = 2200, name = "Admin tren+aktivitas gelap")
+@Composable
+private fun AdminTrenGelapPreview() = PreviewBeranda(FakeData.userAdmin, sukses(FakeData.dashboardAdmin), gelap = true)
+
+@Preview(showBackground = true, heightDp = 1700, name = "Admin tanpa tren/aktivitas terang")
+@Composable
+private fun AdminKosongPreview() = PreviewBeranda(
+    FakeData.userAdmin,
+    sukses(FakeData.dashboardAdmin.copy(ringkasan = FakeData.ringkasan.copy(tren = emptyList(), aktivitas = emptyList()))),
+    gelap = false,
+)
+
+@Preview(showBackground = true, heightDp = 1500, name = "Piket+Ustadz terang (daftar ustadz)")
+@Composable
+private fun PiketUstadzTerangPreview() = PreviewBeranda(FakeData.userPiketUstadz, sukses(FakeData.dashboardTugas), gelap = false)
+
+@Preview(showBackground = true, heightDp = 1500, name = "Piket+Ustadz gelap (server lama tanpa daftar)")
+@Composable
+private fun TugasServerLamaPreview() = PreviewBeranda(
+    FakeData.userPiketUstadz,
+    sukses(FakeData.dashboardTugas.copy(ringkasan = FakeData.dashboardTugas.ringkasan!!.let { it.copy(ustadz = it.ustadz.copy(daftar = emptyList())) })),
     gelap = true,
 )
