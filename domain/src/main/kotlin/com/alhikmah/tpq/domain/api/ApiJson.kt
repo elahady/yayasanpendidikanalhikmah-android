@@ -12,6 +12,7 @@ import com.alhikmah.tpq.domain.model.Ringkasan
 import com.alhikmah.tpq.domain.model.SantriRingkas
 import com.alhikmah.tpq.domain.model.StatusHadir
 import com.alhikmah.tpq.domain.model.TrenHarian
+import com.alhikmah.tpq.domain.model.UstadzHariIni
 import com.alhikmah.tpq.domain.model.UstadzRingkas
 import com.alhikmah.tpq.domain.model.Jenjang
 import com.alhikmah.tpq.domain.model.Jilid
@@ -129,7 +130,21 @@ object ApiJson {
                 perJenjang = Jenjang.entries.associateWith { perJenjang?.optInt(it.name, 0) ?: 0 },
                 perJilid = Jilid.entries.associateWith { perJilid?.optInt(it.name, 0) ?: 0 },
             ),
-            ustadz = UstadzRingkas(ustadz.getInt("total"), ustadz.getInt("hadir"), ustadz.getInt("tidakHadir"), ustadz.getInt("belumDicatat")),
+            ustadz = UstadzRingkas(
+                total = ustadz.getInt("total"),
+                hadir = ustadz.getInt("hadir"),
+                tidakHadir = ustadz.getInt("tidakHadir"),
+                belumDicatat = ustadz.getInt("belumDicatat"),
+                // `daftar` baru (31 Okt 2026): server lama tidak mengirimnya, jadi dianggap kosong.
+                daftar = optObjects(ustadz, "daftar").map {
+                    UstadzHariIni(
+                        id = it.getString("id"),
+                        nama = it.getString("nama"),
+                        mapelDiajar = it.optStringOrNull("mapelDiajar"),
+                        status = StatusHadir.fromApi(it.optStringOrNull("status")),
+                    )
+                },
+            ),
             tren = optObjects(obj, "tren").map { TrenHarian(it.getString("tanggal"), it.getInt("hadir"), it.getInt("tercatat")) },
             perhatian = optObjects(obj, "perhatian").map {
                 Perhatian(

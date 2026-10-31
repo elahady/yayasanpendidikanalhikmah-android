@@ -44,10 +44,15 @@ data class UstadzRingkas(
     val hadir: Int,
     val tidakHadir: Int,
     val belumDicatat: Int,
+    /** Semua ustadz urut nama dengan status hari itu; kosong bila server lama tidak mengirim `daftar`. */
+    val daftar: List<UstadzHariIni> = emptyList(),
 ) {
     /** Ustadz yang sudah punya entri hari itu (hadir + tidak hadir). */
     val tercatat: Int get() = (total - belumDicatat).coerceAtLeast(0)
 }
+
+/** Satu ustadz pada `ringkasan.ustadz.daftar`: [status] absensinya pada tanggal dashboard. */
+data class UstadzHariIni(val id: String, val nama: String, val mapelDiajar: String?, val status: StatusHadir)
 
 /** Satu hari belajar pada tren: [tercatat] = jumlah entri (hadir + tidak hadir). */
 data class TrenHarian(val tanggal: String, val hadir: Int, val tercatat: Int)

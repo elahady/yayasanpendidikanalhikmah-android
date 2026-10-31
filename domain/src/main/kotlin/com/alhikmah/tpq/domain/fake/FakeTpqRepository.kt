@@ -20,6 +20,7 @@ import com.alhikmah.tpq.domain.model.Ringkasan
 import com.alhikmah.tpq.domain.model.SantriRingkas
 import com.alhikmah.tpq.domain.model.StatusHadir
 import com.alhikmah.tpq.domain.model.TrenHarian
+import com.alhikmah.tpq.domain.model.UstadzHariIni
 import com.alhikmah.tpq.domain.model.UstadzRingkas
 import com.alhikmah.tpq.domain.model.Jenjang
 import com.alhikmah.tpq.domain.model.Jilid
@@ -66,23 +67,56 @@ object FakeData {
         Jilid.JILID_4 to 10, Jilid.JILID_5 to 7, Jilid.JILID_6 to 5, Jilid.AL_QURAN to 12,
     )
 
+    /** Sembilan ustadz urut nama untuk preview; "u3" (Hasan Basri) = akun [userPiketUstadz]. 7 hadir, 1 tidak hadir, 1 belum dicatat. */
+    val ustadzHariIni: List<UstadzHariIni> = listOf(
+        UstadzHariIni("u1", "Ustadz Ahmad Fauzi", "Tahfidz", StatusHadir.HADIR),
+        UstadzHariIni("u3", "Ustadz Hasan Basri", "Fiqih", StatusHadir.HADIR),
+        UstadzHariIni("u7", "Ustadz Mansur", "Bahasa Arab", StatusHadir.TIDAK_HADIR),
+        UstadzHariIni("u2", "Ustadzah Siti Nurhaliza", "Al-Qur'an & Tajwid", StatusHadir.HADIR),
+        UstadzHariIni("u4", "Ustadzah Fatimah", "Jilid 1-2", StatusHadir.HADIR),
+        UstadzHariIni("u5", "Ustadzah Nur", null, StatusHadir.HADIR),
+        UstadzHariIni("u6", "Ustadz Yusuf", "Akhlak", StatusHadir.HADIR),
+        UstadzHariIni("u8", "Ustadz Zainal", "Fiqih", StatusHadir.BELUM_DICATAT),
+        UstadzHariIni("u9", "Ustadzah Zulfa", "Tajwid", StatusHadir.HADIR),
+    )
+
+    /** 14 hari belajar terakhir (urut naik), hari terakhir belum lengkap (71 dari 80 tercatat). */
+    val trenContoh: List<TrenHarian> = listOf(
+        "2026-10-15" to 76, "2026-10-16" to 79, "2026-10-17" to 73, "2026-10-19" to 77, "2026-10-20" to 80,
+        "2026-10-21" to 72, "2026-10-22" to 76, "2026-10-23" to 79, "2026-10-26" to 75, "2026-10-27" to 73,
+        "2026-10-28" to 77, "2026-10-29" to 78, "2026-10-30" to 74,
+    ).map { (tanggal, hadir) -> TrenHarian(tanggal, hadir, 86) } + TrenHarian("2026-10-31", 71, 80)
+
     val ringkasan = Ringkasan(
         santri = SantriRingkas(86, 71, 9, 6, mapOf(Jenjang.ULA to 61, Jenjang.WUSTHO to 25), perJilid),
-        ustadz = UstadzRingkas(9, 7, 1, 1),
-        tren = listOf(TrenHarian("2026-10-29", 78, 86), TrenHarian("2026-10-30", 74, 86), TrenHarian("2026-10-31", 71, 80)),
+        ustadz = UstadzRingkas(9, 7, 1, 1, ustadzHariIni),
+        tren = trenContoh,
         perhatian = listOf(
             Perhatian("SANTRI_BELUM_DICATAT", 6, "6 santri belum dicatat absensinya", "Aisyah, Fadhil, Rafi dan 3 lainnya", AksiPerhatian.ABSENSI_SANTRI),
             Perhatian("SANTRI_ABSEN_BERUNTUN", 3, "3 santri tidak hadir 3 hari belajar berturut-turut", "Aisyah, Fadhil, Rafi", AksiPerhatian.ABSENSI_SANTRI),
             Perhatian("USTADZ_BELUM_DICATAT", 1, "1 ustadz belum dicatat absensinya", "Zainal", AksiPerhatian.ABSENSI_USTADZ),
             Perhatian("PROGRESS_LAMA", 5, "5 santri progress belum berubah lebih dari 60 hari", "Budi, Citra, Dimas dan 2 lainnya", AksiPerhatian.DAFTAR_SANTRI),
         ),
-        aktivitas = listOf(Aktivitas("2026-10-31T01:12:00.000Z", "Ust. Hasan", "ABSENSI_SANTRI", "Ust. Hasan mencatat absensi santri (12 santri)")),
+        aktivitas = listOf(
+            Aktivitas("2026-10-31T01:12:00.000Z", "Ust. Hasan", "ABSENSI_SANTRI", "Ust. Hasan mencatat absensi santri (12 santri)"),
+            Aktivitas("2026-10-31T00:48:00.000Z", "Ust. Zainal", "ABSENSI_USTADZ", "Ust. Zainal mencatat absensi ustadz (7 ustadz)"),
+            Aktivitas("2026-10-30T09:20:00.000Z", "Bu Nur", "ABSENSI_SANTRI", "Bu Nur mencatat absensi santri (14 santri)"),
+        ),
     )
 
     val dashboardAdmin = Dashboard("2026-10-31", ringkasan, null)
 
     /** Piket + ustadz: ustadz 7 dari 9 sudah tercatat tersisa 2 (dipakai kartu tugas piket). */
-    val dashboardTugas = Dashboard("2026-10-31", ringkasan.copy(ustadz = UstadzRingkas(9, 6, 1, 2)), null)
+    val dashboardTugas = Dashboard(
+        "2026-10-31",
+        ringkasan.copy(
+            ustadz = UstadzRingkas(
+                9, 6, 1, 2,
+                ustadzHariIni.map { if (it.id == "u9") it.copy(status = StatusHadir.BELUM_DICATAT) else it },
+            ),
+        ),
+        null,
+    )
 
     private val hariWali: List<HariKehadiran> = (1..30).map { i ->
         val status = when (i) {
@@ -299,7 +333,17 @@ class FakeTpqRepository(
             perJenjang = Jenjang.entries.associateWith { j -> santriData.count { it.jenjang == j } },
             perJilid = Jilid.entries.associateWith { j -> santriData.count { it.jilidSaatIni == j } },
         )
-        val ustadz = UstadzRingkas(ustadzList.size, uHadir, uTidak, ustadzList.size - uHadir - uTidak)
+        val daftarUstadz = ustadzList
+            .sortedWith(compareBy<Ustadz> { it.nama.lowercase() }.thenBy { it.id })
+            .map { u ->
+                val status = when (ustHariIni.lastOrNull { it.subjectId == u.id }?.hadir) {
+                    true -> StatusHadir.HADIR
+                    false -> StatusHadir.TIDAK_HADIR
+                    null -> StatusHadir.BELUM_DICATAT
+                }
+                UstadzHariIni(u.id, u.nama, u.mapelDiajar, status)
+            }
+        val ustadz = UstadzRingkas(ustadzList.size, uHadir, uTidak, ustadzList.size - uHadir - uTidak, daftarUstadz)
 
         // Hari belajar = tanggal yang punya >= 1 entri absensi santri; maksimal 14 terakhir sampai tanggal (urut naik).
         val hariBelajar = absensiSantri.values.map { it.tanggal }.filter { it <= tanggal }.distinct().sorted().takeLast(TREN_HARI)
